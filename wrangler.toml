@@ -1,0 +1,25 @@
+name = "manochat"
+main = "src/index.js"
+compatibility_date = "2026-08-01"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = ["/api/*", "/webhooks/*"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "manochat-db"
+database_id = "SUBSTITUIR_DEPOIS_DE_CRIAR_O_D1"
+
+[vars]
+META_API_VERSION = "v26.0"
+APP_ENV = "production"
+
+# Secrets configurados somente no deploy:
+# wrangler secret put ADMIN_PASSWORD
+# wrangler secret put SESSION_SECRET
+# wrangler secret put META_ACCESS_TOKEN
+# wrangler secret put META_VERIFY_TOKEN
+# wrangler secret put META_APP_SECRET
+# wrangler secret put META_IG_USER_ID
