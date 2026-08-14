@@ -14,6 +14,47 @@ const safeDetail = (error) => JSON.stringify({
   subcode: error?.meta?.error_subcode
 });
 
+const LEGAL_PAGES = {
+  '/privacy': {
+    title: 'Política de Privacidade',
+    intro: 'Esta política explica como o ManoChat trata os dados necessários para automatizar interações na conta profissional do Instagram conectada pelo administrador.',
+    sections: [
+      ['Dados tratados', 'Podemos tratar identificadores do Instagram, nome de usuário, dados públicos do perfil e informações técnicas relacionadas a comentários, mensagens e entregas processadas pela automação.'],
+      ['Finalidade', 'Os dados são usados exclusivamente para identificar palavras-chave, responder às interações configuradas, entregar o conteúdo solicitado, evitar processamento duplicado e apresentar o histórico no painel.'],
+      ['Armazenamento e compartilhamento', 'Os registros operacionais ficam armazenados na infraestrutura Cloudflare utilizada pelo ManoChat. Os dados somente são compartilhados com a Meta e com provedores técnicos quando isso é necessário para executar o serviço.'],
+      ['Retenção e exclusão', 'Os dados são mantidos pelo período necessário à operação e à segurança da automação. Você pode solicitar acesso, correção ou exclusão pelo e-mail informado abaixo.'],
+      ['Segurança', 'São utilizados controles de acesso, variáveis secretas e validação das solicitações recebidas para reduzir o risco de acesso não autorizado.']
+    ]
+  },
+  '/terms': {
+    title: 'Termos de Serviço',
+    intro: 'Estes termos regulam o uso do ManoChat, uma ferramenta privada de automação da conta profissional do Instagram do administrador.',
+    sections: [
+      ['Uso permitido', 'O serviço deve ser usado de acordo com as regras do Instagram e da Meta, somente em contas e conteúdos para os quais o administrador tenha autorização.'],
+      ['Responsabilidade', 'O administrador é responsável pelas campanhas, mensagens, links e arquivos configurados, bem como pelo cumprimento da legislação aplicável.'],
+      ['Disponibilidade', 'O funcionamento depende das APIs e da infraestrutura de terceiros. Atualizações, limites ou indisponibilidades desses serviços podem afetar a automação.'],
+      ['Suspensão', 'O acesso pode ser interrompido para proteger dados, corrigir falhas ou impedir uso que viole estes termos ou as políticas das plataformas integradas.']
+    ]
+  },
+  '/data-deletion': {
+    title: 'Exclusão de Dados',
+    intro: 'Você pode solicitar a exclusão dos dados associados às suas interações processadas pelo ManoChat.',
+    sections: [
+      ['Como solicitar', 'Envie um e-mail com o assunto “Exclusão de dados — ManoChat” e informe o seu nome de usuário do Instagram. A solicitação será confirmada e processada em até 30 dias.'],
+      ['Revogar o acesso', 'Você também pode remover o acesso do aplicativo nas configurações do Instagram, em Apps e sites. A revogação impede novos acessos, mas não substitui o pedido de exclusão dos registros já armazenados.'],
+      ['Confirmação', 'Após a conclusão, enviaremos uma confirmação para o endereço utilizado na solicitação, salvo quando a retenção for exigida por obrigação legal.']
+    ]
+  }
+};
+
+function legalPage(path, method) {
+  const page = LEGAL_PAGES[path.replace(/\/$/, '') || '/'];
+  if (!page || !['GET', 'HEAD'].includes(method)) return null;
+  const sections = page.sections.map(([title, text]) => `<section><h2>${title}</h2><p>${text}</p></section>`).join('');
+  const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${page.title} — ManoChat</title><style>\n+    :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#10231b;background:#f4f7f4}*{box-sizing:border-box}body{margin:0}header{background:#123e31;color:#fff;padding:28px 24px}header div,main,footer{max-width:900px;margin:auto}.brand{font-size:22px;font-weight:800;color:#c7ff55;text-decoration:none}main{padding:64px 24px}h1{font-size:clamp(38px,7vw,64px);letter-spacing:-.05em;line-height:1;margin:0 0 22px}.intro{font-size:20px;line-height:1.6;color:#50635b;margin-bottom:42px}section{background:#fff;border:1px solid #dce5df;border-radius:18px;padding:26px;margin:16px 0}h2{font-size:20px;margin:0 0 10px}p{line-height:1.7;margin:0;color:#50635b}footer{padding:0 24px 48px;color:#65766f}a{color:#174f3f}footer a{font-weight:700}</style></head><body><header><div><a class="brand" href="/">↗ ManoChat</a></div></header><main><h1>${page.title}</h1><p class="intro">${page.intro}</p>${sections}</main><footer>Vigente desde 14 de agosto de 2026 · Contato: <a href="mailto:gustapradogusta@gmail.com">gustapradogusta@gmail.com</a></footer></body></html>`;
+  return new Response(method === 'HEAD' ? null : html, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=3600' } });
+}
+
 async function readAsset(env, path) {
   if (env.ASSETS) return env.ASSETS.fetch(new Request(new URL(path, 'https://asset.local')));
   return null;
@@ -240,6 +281,9 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const path = url.pathname;
+
+    const publicPage = legalPage(path, request.method);
+    if (publicPage) return publicPage;
 
     if (path === '/webhooks/instagram' && request.method === 'GET') {
       if (url.searchParams.get('hub.mode') === 'subscribe' && url.searchParams.get('hub.verify_token') === env.META_VERIFY_TOKEN) {
