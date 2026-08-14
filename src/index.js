@@ -14,6 +14,13 @@ const safeDetail = (error) => JSON.stringify({
   subcode: error?.meta?.error_subcode
 });
 
+const operationalError = (error) => ({
+  message: error?.message || 'Erro desconhecido',
+  status: error?.status,
+  code: error?.meta?.code,
+  subcode: error?.meta?.error_subcode
+});
+
 const LEGAL_PAGES = {
   '/privacy': {
     title: 'Política de Privacidade',
@@ -190,9 +197,19 @@ async function campaignForMessage(env, text) {
 
 async function handleComment(env, event) {
   const commentId = event.id || event.comment_id;
-  if (!commentId || !(await claimEvent(env, eventIdFor('comment', event), 'comment'))) return;
+  if (!commentId) {
+    console.warn('manochat.comment_ignored', { reason: 'missing_comment_id' });
+    return;
+  }
+  if (!(await claimEvent(env, eventIdFor('comment', event), 'comment'))) {
+    console.info('manochat.comment_ignored', { reason: 'duplicate' });
+    return;
+  }
   const campaign = await campaignForComment(env, event);
-  if (!campaign) return;
+  if (!campaign) {
+    console.info('manochat.comment_ignored', { reason: 'no_matching_campaign' });
+    return;
+  }
 
   const igsid = event.from?.id || event.user_id || null;
   try {
@@ -209,8 +226,10 @@ async function handleComment(env, event) {
         .bind(recipientId, campaign.id, commentId).run();
     }
     await logInteraction(env, { igsid: recipientId, campaignId: campaign.id, eventType: 'private_reply', direction: 'outbound', status: 'sent', externalId: sent.message_id });
+    console.info('manochat.private_reply_sent', { campaignId: campaign.id });
   } catch (error) {
     await logInteraction(env, { igsid, campaignId: campaign.id, eventType: 'private_reply', direction: 'outbound', status: 'failed', externalId: commentId, detail: safeDetail(error) });
+    console.error('manochat.private_reply_failed', operationalError(error));
   }
 }
 
@@ -260,11 +279,34 @@ async function handleMessage(env, event) {
 async function webhook(request, env, ctx) {
   const rawBody = await request.text();
   if (!(await verifyMetaSignature(rawBody, request.headers.get('x-hub-signature-256'), env.META_APP_SECRET))) {
+    console.warn('manochat.webhook_rejected', { reason: 'invalid_signature' });
     return new Response('Assinatura inválida', { status: 401 });
   }
-  const body = JSON.parse(rawBody);
+  let body;
+  try {
+    body = JSON.parse(rawBody);
+  } catch {
+    console.warn('manochat.webhook_rejected', { reason: 'invalid_json' });
+    return new Response('JSON inválido', { status: 400 });
+  }
   const events = parseInstagramEvents(body);
-  ctx.waitUntil(Promise.all(events.map((event) => event.type === 'comment' ? handleComment(env, event) : handleMessage(env, event))));
+  console.info('manochat.webhook_received', {
+    object: body?.object || 'unknown',
+    entries: body?.entry?.length || 0,
+    events: events.length,
+    types: [...new Set(events.map((event) => event.type))]
+  });
+  ctx.waitUntil(Promise.allSettled(events.map((event) => event.type === 'comment'
+    ? handleComment(env, event)
+    : handleMessage(env, event))).then((results) => {
+    const rejected = results.filter((result) => result.status === 'rejected');
+    if (rejected.length) {
+      console.error('manochat.webhook_processing_failed', {
+        count: rejected.length,
+        errors: rejected.map((result) => operationalError(result.reason))
+      });
+    }
+  }));
   return new Response('EVENT_RECEIVED');
 }
 

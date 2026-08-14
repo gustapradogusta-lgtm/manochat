@@ -25,3 +25,27 @@ test('parser ignora mensagens de eco', () => {
   assert.equal(events.length, 1);
   assert.equal(events[0].senderId, '2');
 });
+
+test('parser reconhece comentário enviado pelo webhook da Meta', () => {
+  const events = parseInstagramEvents({
+    object: 'instagram',
+    entry: [{
+      id: 'ig-business-id',
+      changes: [{
+        field: 'comments',
+        value: {
+          id: 'comment-id',
+          text: 'QUERO',
+          from: { id: 'igsid', username: 'cliente' },
+          media: { id: 'media-id' }
+        }
+      }]
+    }]
+  });
+
+  assert.equal(events.length, 1);
+  assert.equal(events[0].type, 'comment');
+  assert.equal(events[0].id, 'comment-id');
+  assert.equal(events[0].text, 'QUERO');
+  assert.equal(events[0].media.id, 'media-id');
+});
