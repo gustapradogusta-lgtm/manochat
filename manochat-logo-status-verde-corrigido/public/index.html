@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f4f7f5" />
+  <title>ManoChat — Automação do Instagram</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/media-picker.css" />
+</head>
+<body>
+  <div id="login" class="login-shell hidden">
+    <section class="login-story">
+      <a class="brand brand-light" href="#" aria-label="ManoChat">
+        <span class="brand-mark">↗</span><span>ManoChat</span>
+      </a>
+      <div>
+        <span class="eyebrow light">AUTOMAÇÃO QUE CONVERTE</span>
+        <h1>Do comentário<br>para a conversa.</h1>
+        <p>Transforme intenção em relacionamento, sem mensalidade e dentro das regras oficiais do Instagram.</p>
+      </div>
+      <div class="login-proof"><span class="pulse"></span> Infraestrutura pronta para Cloudflare</div>
+    </section>
+    <section class="login-form-wrap">
+      <form id="loginForm" class="login-form">
+        <div class="mobile-brand"><img class="brand-logo" src="/manochat-logo.png" alt="ManoChat"></div>
+        <span class="eyebrow">ACESSO PROTEGIDO</span>
+        <h2>Bem-vindo de volta.</h2>
+        <p>Entre com a senha de administrador configurada no deploy.</p>
+        <label>Senha
+          <span class="input-wrap"><input id="password" type="password" autocomplete="current-password" placeholder="Sua senha" required><button type="button" id="showPassword" aria-label="Mostrar senha">◉</button></span>
+        </label>
+        <button class="primary full" type="submit">Entrar no painel <span>→</span></button>
+        <p id="loginError" class="form-error" role="alert"></p>
+      </form>
+    </section>
+  </div>
+
+  <div id="app" class="app-shell hidden">
+    <aside class="sidebar">
+      <a class="brand brand-image-link" href="#overview" aria-label="ManoChat"><img class="brand-logo" src="/manochat-logo.png" alt="ManoChat"></a>
+      <nav aria-label="Navegação principal">
+        <button class="nav-item active" data-view="overview"><span>⌂</span> Visão geral</button>
+        <button class="nav-item" data-view="campaigns"><span>✦</span> Campanhas</button>
+        <button class="nav-item" data-view="simulator"><span>▷</span> Simulador</button>
+        <button class="nav-item" data-view="connection"><span>⌁</span> Conexão Meta</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="cost-badge"><span>R$</span><div><strong>Custo atual</strong><small>R$ 0,00 / mês</small></div></div>
+        <button id="logout" class="logout">Sair do painel <span>↗</span></button>
+      </div>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <button id="menuToggle" class="menu-toggle" aria-label="Abrir menu">☰</button>
+        <div><span class="breadcrumb">PAINEL / <b id="breadcrumb">VISÃO GERAL</b></span></div>
+        <div class="top-actions"><span id="connectionPill" class="status-pill waiting"><i></i> Aguardando Meta</span><button id="newCampaignTop" class="primary compact">+ Nova campanha</button></div>
+      </header>
+
+      <div class="content">
+        <section id="overviewView" class="view active">
+          <div class="page-heading"><div><span class="eyebrow">OPERAÇÃO EM TEMPO REAL</span><h1>Bom dia, Gustavo.</h1><p>Veja como seus comentários estão virando conversas e entregas.</p></div><button class="secondary" data-refresh>↻ Atualizar dados</button></div>
+          <div class="metrics">
+            <article class="metric hero-metric"><span class="metric-icon">✦</span><small>Campanhas ativas</small><strong id="metricCampaigns">—</strong><p>Automações trabalhando agora</p></article>
+            <article class="metric"><span class="metric-icon blue">◎</span><small>Contatos alcançados</small><strong id="metricContacts">—</strong><p>Perfis únicos registrados</p></article>
+            <article class="metric"><span class="metric-icon amber">✓</span><small>Conteúdos entregues</small><strong id="metricDelivered">—</strong><p>Funis concluídos com sucesso</p></article>
+          </div>
+          <div class="overview-grid">
+            <article class="panel activity-panel"><div class="panel-head"><div><span class="eyebrow">ÚLTIMOS EVENTOS</span><h2>Atividade recente</h2></div><span class="live"><i></i> AO VIVO</span></div><div id="activityList" class="activity-list"><div class="empty"><span>↗</span><strong>Nenhuma interação ainda</strong><p>Os eventos aparecerão aqui quando a automação começar.</p></div></div></article>
+            <article class="panel flow-panel"><span class="eyebrow">COMO FUNCIONA</span><h2>Seu fluxo ativo</h2><div class="flow"><div><b>1</b><span><strong>Comentário</strong><small>Detecta a palavra-chave</small></span></div><i></i><div><b>2</b><span><strong>Mensagem privada</strong><small>Convida para responder</small></span></div><i></i><div><b>3</b><span><strong>Verificação</strong><small>Confere se segue o perfil</small></span></div><i></i><div><b>4</b><span><strong>Entrega</strong><small>Libera o conteúdo</small></span></div></div></article>
+          </div>
+        </section>
+
+        <section id="campaignsView" class="view">
+          <div class="page-heading"><div><span class="eyebrow">AUTOMAÇÕES</span><h1>Campanhas</h1><p>Uma palavra-chave, uma conversa e uma entrega bem definida.</p></div><button id="newCampaign" class="primary">+ Criar campanha</button></div>
+          <div id="campaignList" class="campaign-list"></div>
+        </section>
+
+        <section id="simulatorView" class="view">
+          <div class="page-heading"><div><span class="eyebrow">TESTE SEM PUBLICAR</span><h1>Simulador do fluxo</h1><p>Confira cada resposta antes de conectar seu Instagram.</p></div></div>
+          <div class="simulator-grid">
+            <form id="simulatorForm" class="panel form-panel">
+              <label>Campanha<select id="simCampaign"></select></label>
+              <label>Etapa atual<select id="simStage"><option value="awaiting_reply">Aguardando resposta</option><option value="awaiting_follow">Aguardando follow</option></select></label>
+              <label>Mensagem recebida<input id="simMessage" value="quero"></label>
+              <label class="switch-row"><span><strong>A pessoa segue o perfil?</strong><small>Simule o retorno da Meta</small></span><input id="simFollows" type="checkbox"><i></i></label>
+              <button class="primary full" type="submit">Simular resposta →</button>
+            </form>
+            <article class="phone"><div class="phone-top"><span>‹</span><div class="avatar">GP</div><strong>seuperfil</strong><small>Conta profissional</small></div><div id="chatPreview" class="chat"><div class="bubble received">Envie uma simulação para visualizar a resposta.</div></div><div class="phone-input">Mensagem… <span>➤</span></div></article>
+          </div>
+        </section>
+
+        <section id="connectionView" class="view">
+          <div class="page-heading"><div><span class="eyebrow">INTEGRAÇÃO OFICIAL</span><h1>Conexão com a Meta</h1><p>Checklist seguro para colocar sua automação no ar.</p></div></div>
+          <div class="connection-grid">
+            <article class="panel setup-card"><div class="setup-number">01</div><h2>App da Meta</h2><p>Aplicativo autorizado para acessar sua conta profissional do Instagram.</p><span id="metaAppState" class="setup-state">Verificando…</span></article>
+            <article class="panel setup-card"><div class="setup-number">02</div><h2>Secrets</h2><p>Tokens e senhas protegidos diretamente na infraestrutura da Cloudflare.</p><span id="secretsState" class="setup-state">Verificando…</span></article>
+            <article class="panel setup-card"><div class="setup-number">03</div><h2>Webhook</h2><p>Eventos de comentários e mensagens chegando ao ManoChat.</p><span id="webhookState" class="setup-state">Verificando…</span></article>
+          </div>
+          <article class="panel endpoint-card"><div><span class="eyebrow">ENDPOINT DO WEBHOOK</span><h2 id="webhookUrl">—</h2></div><button id="copyWebhook" class="secondary">Copiar endereço</button></article>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <dialog id="campaignDialog">
+    <form id="campaignForm" method="dialog">
+      <div class="dialog-head"><div><span class="eyebrow">CONFIGURAÇÃO</span><h2 id="dialogTitle">Nova campanha</h2></div><button id="closeCampaign" class="icon-button" type="button" aria-label="Fechar">×</button></div>
+      <input id="campaignId" type="hidden">
+      <div class="form-grid"><label>Nome da campanha<input id="campaignName" required placeholder="Ex.: Material do Reel"></label><label>Palavra-chave<input id="campaignKeyword" required placeholder="QUERO"></label></div>
+      <label>ID da publicação <small>Opcional: vazio funciona em qualquer post</small>
+        <span class="media-input-row"><input id="campaignMedia" placeholder="Escolha uma publicação abaixo"><button id="chooseMedia" class="secondary" type="button">Escolher publicação</button></span>
+      </label>
+      <section id="mediaPicker" class="media-picker hidden" aria-live="polite">
+        <div class="media-picker-head"><div><strong>Suas publicações recentes</strong><small>Toque em uma publicação para selecioná-la.</small></div><button id="closeMediaPicker" class="icon-button" type="button" aria-label="Fechar seletor">×</button></div>
+        <div id="mediaPickerStatus" class="media-picker-status">Carregando publicações…</div>
+        <div id="mediaGrid" class="media-grid"></div>
+      </section>
+      <label>Resposta pública no comentário <small>Deixe vazio para não responder publicamente</small><textarea id="campaignPublicReply" rows="2" placeholder="Te enviei no Direct! 😊"></textarea></label>
+      <label>Primeira mensagem<textarea id="campaignFirst" required rows="3" placeholder="Oi! Responda QUERO para receber..."></textarea></label>
+      <label>Mensagem para pedir follow<textarea id="campaignFollow" rows="3" placeholder="Siga o perfil e responda PRONTO..."></textarea></label>
+      <label>Mensagem de entrega<textarea id="campaignDelivery" required rows="2" placeholder="Aqui está o conteúdo prometido:"></textarea></label>
+      <label>Link de entrega<input id="campaignUrl" required type="url" placeholder="https://..."></label>
+      <div class="form-grid"><label class="switch-row"><span><strong>Exigir follow</strong><small>Antes de entregar</small></span><input id="campaignFollowRequired" type="checkbox" checked><i></i></label><label>Status<select id="campaignStatus"><option value="active">Ativa</option><option value="paused">Pausada</option></select></label></div>
+      <p id="campaignError" class="form-error"></p>
+      <div class="dialog-actions"><button id="deleteCampaign" class="danger-button hidden" type="button">Excluir campanha</button><span class="dialog-actions-main"><button id="cancelCampaign" class="secondary" type="button">Cancelar</button><button id="saveCampaign" class="primary" type="submit">Salvar campanha</button></span></div>
+    </form>
+  </dialog>
+  <div id="toast" role="status"></div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
