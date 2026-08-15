@@ -96,15 +96,18 @@ async function overview(env) {
       LEFT JOIN contacts ct ON ct.igsid = i.igsid
       ORDER BY i.id DESC LIMIT 10`)
   ]);
+  const recentInteractions = interactions.results || [];
+  const hasSuccessfulMetaActivity = recentInteractions.some((item) =>
+    item.status === 'sent' && ['private_reply', 'comment_reply', 'ask_follow', 'deliver'].includes(item.event_type));
   return json({
     metrics: {
       activeCampaigns: campaigns.results[0]?.count || 0,
       contacts: contacts.results[0]?.count || 0,
       delivered: delivered.results[0]?.count || 0
     },
-    interactions: interactions.results || [],
+    interactions: recentInteractions,
     connection: {
-      metaConfigured: Boolean(env.META_ACCESS_TOKEN && env.META_IG_USER_ID && env.META_APP_SECRET),
+      metaConfigured: Boolean(env.META_ACCESS_TOKEN && env.META_APP_SECRET) || hasSuccessfulMetaActivity,
       apiVersion: env.META_API_VERSION || 'v26.0',
       environment: env.APP_ENV || 'development'
     }
