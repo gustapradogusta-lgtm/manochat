@@ -124,6 +124,7 @@ function cleanCampaign(body) {
     name: String(body.name || '').trim(),
     keyword: String(body.keyword || '').trim(),
     mediaId: String(body.media_id || '').trim() || null,
+    publicReply: String(body.public_reply ?? '').trim(),
     firstMessage: String(body.first_message || '').trim(),
     followMessage: String(body.follow_message || '').trim(),
     deliveryMessage: String(body.delivery_message || '').trim(),
@@ -148,15 +149,15 @@ async function saveCampaign(request, env, id) {
 
   try {
     if (id) {
-      await env.DB.prepare(`UPDATE campaigns SET name=?, keyword=?, media_id=?, first_message=?, follow_message=?,
+      await env.DB.prepare(`UPDATE campaigns SET name=?, keyword=?, media_id=?, public_reply=?, first_message=?, follow_message=?,
         delivery_message=?, delivery_url=?, follow_required=?, status=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`)
-        .bind(campaign.name, campaign.keyword, campaign.mediaId, campaign.firstMessage, campaign.followMessage,
+        .bind(campaign.name, campaign.keyword, campaign.mediaId, campaign.publicReply, campaign.firstMessage, campaign.followMessage,
           campaign.deliveryMessage, campaign.deliveryUrl, campaign.followRequired, campaign.status, id).run();
     } else {
       await env.DB.prepare(`INSERT INTO campaigns
-        (name, keyword, media_id, first_message, follow_message, delivery_message, delivery_url, follow_required, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-        .bind(campaign.name, campaign.keyword, campaign.mediaId, campaign.firstMessage, campaign.followMessage,
+        (name, keyword, media_id, public_reply, first_message, follow_message, delivery_message, delivery_url, follow_required, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        .bind(campaign.name, campaign.keyword, campaign.mediaId, campaign.publicReply, campaign.firstMessage, campaign.followMessage,
           campaign.deliveryMessage, campaign.deliveryUrl, campaign.followRequired, campaign.status).run();
     }
     return json({ ok: true });
@@ -233,7 +234,7 @@ async function handleComment(env, event) {
     await logInteraction(env, { igsid: recipientId, campaignId: campaign.id, eventType: 'private_reply', direction: 'outbound', status: 'sent', externalId: sent.message_id });
     console.info('manochat.private_reply_sent', { campaignId: campaign.id });
 
-    const publicReply = String(env.PUBLIC_COMMENT_REPLY || 'Te enviei no Direct! 😊').trim();
+    const publicReply = String(campaign.public_reply ?? env.PUBLIC_COMMENT_REPLY ?? 'Te enviei no Direct! 😊').trim();
     if (publicReply) {
       try {
         const reply = await sendCommentReply(env, commentId, publicReply);
