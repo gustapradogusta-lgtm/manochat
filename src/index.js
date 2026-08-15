@@ -212,8 +212,13 @@ async function handleComment(env, event) {
   }
 
   const igsid = event.from?.id || event.user_id || null;
+  const igUserId = env.META_IG_USER_ID || event.entryId;
+  if (!igUserId) {
+    console.error('manochat.private_reply_failed', { message: 'Instagram professional account ID is missing' });
+    return;
+  }
   try {
-    const sent = await sendPrivateReply(env, commentId, campaign.first_message);
+    const sent = await sendPrivateReply(env, commentId, campaign.first_message, igUserId);
     const recipientId = sent.recipient_id || igsid;
     if (recipientId) {
       await env.DB.prepare(`INSERT INTO contacts(igsid, username) VALUES (?, ?)
@@ -237,6 +242,7 @@ async function handleMessage(env, event) {
   const mid = event.message?.mid;
   const igsid = event.senderId;
   const text = event.message?.text || '';
+  const igUserId = env.META_IG_USER_ID || event.recipientId || event.entryId;
   if (!igsid || !text || !(await claimEvent(env, eventIdFor('message', { mid, timestamp: event.timestamp }), 'message'))) return;
 
   let conversation = await env.DB.prepare(`SELECT v.*, c.* FROM conversations v
@@ -259,7 +265,8 @@ async function handleMessage(env, event) {
     ? `${conversation.delivery_message}\n${conversation.delivery_url}`
     : conversation.follow_message;
   try {
-    const sent = await sendMessage(env, igsid, outbound);
+    if (!igUserId) throw new Error('Instagram professional account ID is missing');
+    const sent = await sendMessage(env, igsid, outbound, igUserId);
     await env.DB.prepare(`INSERT INTO contacts(igsid, username, follows_business) VALUES (?, ?, ?)
       ON CONFLICT(igsid) DO UPDATE SET username=COALESCE(excluded.username, username),
       follows_business=excluded.follows_business, last_seen_at=CURRENT_TIMESTAMP`)

@@ -21,15 +21,15 @@ async function callMeta(env, path, options = {}) {
   return data;
 }
 
-export function sendPrivateReply(env, commentId, text) {
-  return callMeta(env, `${env.META_IG_USER_ID}/messages`, {
+export function sendPrivateReply(env, commentId, text, igUserId = env.META_IG_USER_ID) {
+  return callMeta(env, `${igUserId}/messages`, {
     method: 'POST',
     body: JSON.stringify({ recipient: { comment_id: commentId }, message: { text } })
   });
 }
 
-export function sendMessage(env, igsid, text) {
-  return callMeta(env, `${env.META_IG_USER_ID}/messages`, {
+export function sendMessage(env, igsid, text, igUserId = env.META_IG_USER_ID) {
+  return callMeta(env, `${igUserId}/messages`, {
     method: 'POST',
     body: JSON.stringify({ recipient: { id: igsid }, message: { text } })
   });
