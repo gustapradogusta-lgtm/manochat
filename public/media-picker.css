@@ -87,6 +87,25 @@
   font-weight: 700;
 }
 .danger-button:hover { background: #ffeaea; border-color: #d98f8f; }
+.brand-image-link { display: block; width: 100%; }
+.brand-logo {
+  display: block;
+  width: min(190px, 100%);
+  height: auto;
+  object-fit: contain;
+}
+.sidebar .brand-image-link { padding: 0 4px 28px; }
+.mobile-brand .brand-logo { width: 190px; }
+.setup-state.connected {
+  background: #e8f6e7;
+  color: #2f7a3b;
+  border: 1px solid #c7e7c8;
+}
+.setup-state.connected::before {
+  content: "✓";
+  margin-right: 6px;
+  font-weight: 900;
+}
 @media (max-width: 520px) {
   .dialog-actions { align-items: stretch; flex-direction: column-reverse; }
   .dialog-actions-main { display: grid; grid-template-columns: 1fr 1fr; }

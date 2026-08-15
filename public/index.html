@@ -26,7 +26,7 @@
     </section>
     <section class="login-form-wrap">
       <form id="loginForm" class="login-form">
-        <div class="mobile-brand"><span class="brand-mark">↗</span><strong>ManoChat</strong></div>
+        <div class="mobile-brand"><img class="brand-logo" src="/manochat-logo.png" alt="ManoChat"></div>
         <span class="eyebrow">ACESSO PROTEGIDO</span>
         <h2>Bem-vindo de volta.</h2>
         <p>Entre com a senha de administrador configurada no deploy.</p>
@@ -41,7 +41,7 @@
 
   <div id="app" class="app-shell hidden">
     <aside class="sidebar">
-      <a class="brand" href="#overview"><span class="brand-mark">↗</span><span>ManoChat</span></a>
+      <a class="brand brand-image-link" href="#overview" aria-label="ManoChat"><img class="brand-logo" src="/manochat-logo.png" alt="ManoChat"></a>
       <nav aria-label="Navegação principal">
         <button class="nav-item active" data-view="overview"><span>⌂</span> Visão geral</button>
         <button class="nav-item" data-view="campaigns"><span>✦</span> Campanhas</button>
@@ -97,9 +97,9 @@
         <section id="connectionView" class="view">
           <div class="page-heading"><div><span class="eyebrow">INTEGRAÇÃO OFICIAL</span><h1>Conexão com a Meta</h1><p>Checklist seguro para colocar sua automação no ar.</p></div></div>
           <div class="connection-grid">
-            <article class="panel setup-card"><div class="setup-number">01</div><h2>App da Meta</h2><p>Crie o aplicativo com Instagram API e autorize sua conta profissional.</p><span class="setup-state">Pendente</span></article>
-            <article class="panel setup-card"><div class="setup-number">02</div><h2>Secrets</h2><p>Cadastre tokens e senhas diretamente na Cloudflare, nunca no código.</p><span class="setup-state">Pendente</span></article>
-            <article class="panel setup-card"><div class="setup-number">03</div><h2>Webhook</h2><p>Use <code>/webhooks/instagram</code> e assine os eventos comments e messages.</p><span class="setup-state">Pendente</span></article>
+            <article class="panel setup-card"><div class="setup-number">01</div><h2>App da Meta</h2><p>Aplicativo autorizado para acessar sua conta profissional do Instagram.</p><span id="metaAppState" class="setup-state">Verificando…</span></article>
+            <article class="panel setup-card"><div class="setup-number">02</div><h2>Secrets</h2><p>Tokens e senhas protegidos diretamente na infraestrutura da Cloudflare.</p><span id="secretsState" class="setup-state">Verificando…</span></article>
+            <article class="panel setup-card"><div class="setup-number">03</div><h2>Webhook</h2><p>Eventos de comentários e mensagens chegando ao ManoChat.</p><span id="webhookState" class="setup-state">Verificando…</span></article>
           </div>
           <article class="panel endpoint-card"><div><span class="eyebrow">ENDPOINT DO WEBHOOK</span><h2 id="webhookUrl">—</h2></div><button id="copyWebhook" class="secondary">Copiar endereço</button></article>
         </section>

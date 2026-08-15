@@ -40,6 +40,17 @@ function renderOverview() {
   const pill = $('#connectionPill');
   pill.className = `status-pill ${connection.metaConfigured ? 'connected' : 'waiting'}`;
   pill.innerHTML = `<i></i> ${connection.metaConfigured ? 'Meta conectada' : 'Aguardando Meta'}`;
+  const connectionStates = [
+    ['#metaAppState', 'Meta conectada'],
+    ['#secretsState', 'Configurados'],
+    ['#webhookState', 'Ativo']
+  ];
+  connectionStates.forEach(([selector, activeLabel]) => {
+    const element = $(selector);
+    if (!element) return;
+    element.textContent = connection.metaConfigured ? activeLabel : 'Pendente';
+    element.classList.toggle('connected', connection.metaConfigured);
+  });
   const list = $('#activityList');
   if (!interactions.length) return;
   const labels = { private_reply: 'Private reply', comment_reply: 'Resposta pública', ask_follow: 'Pedido de follow', deliver: 'Conteúdo entregue', profile_check: 'Verificação do perfil' };
