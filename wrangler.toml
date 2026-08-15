@@ -15,6 +15,17 @@ database_id = "418ceda5-cf38-476d-9cb2-483ffb99040d"
 [vars]
 META_API_VERSION = "v26.0"
 APP_ENV = "production"
+PUBLIC_COMMENT_REPLY = "Te enviei no Direct! 😊"
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
 
 # Secrets configurados somente no deploy:
 # wrangler secret put ADMIN_PASSWORD
