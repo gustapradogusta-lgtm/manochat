@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/media-picker.css" />
 </head>
 <body>
   <div id="login" class="login-shell hidden">
@@ -111,7 +112,14 @@
       <div class="dialog-head"><div><span class="eyebrow">CONFIGURAÇÃO</span><h2 id="dialogTitle">Nova campanha</h2></div><button class="icon-button" value="cancel" aria-label="Fechar">×</button></div>
       <input id="campaignId" type="hidden">
       <div class="form-grid"><label>Nome da campanha<input id="campaignName" required placeholder="Ex.: Material do Reel"></label><label>Palavra-chave<input id="campaignKeyword" required placeholder="QUERO"></label></div>
-      <label>ID da publicação <small>Opcional: vazio funciona em qualquer post</small><input id="campaignMedia" placeholder="ID fornecido pela Meta"></label>
+      <label>ID da publicação <small>Opcional: vazio funciona em qualquer post</small>
+        <span class="media-input-row"><input id="campaignMedia" placeholder="Escolha uma publicação abaixo"><button id="chooseMedia" class="secondary" type="button">Escolher publicação</button></span>
+      </label>
+      <section id="mediaPicker" class="media-picker hidden" aria-live="polite">
+        <div class="media-picker-head"><div><strong>Suas publicações recentes</strong><small>Toque em uma publicação para selecioná-la.</small></div><button id="closeMediaPicker" class="icon-button" type="button" aria-label="Fechar seletor">×</button></div>
+        <div id="mediaPickerStatus" class="media-picker-status">Carregando publicações…</div>
+        <div id="mediaGrid" class="media-grid"></div>
+      </section>
       <label>Resposta pública no comentário <small>Deixe vazio para não responder publicamente</small><textarea id="campaignPublicReply" rows="2" placeholder="Te enviei no Direct! 😊"></textarea></label>
       <label>Primeira mensagem<textarea id="campaignFirst" required rows="3" placeholder="Oi! Responda QUERO para receber..."></textarea></label>
       <label>Mensagem para pedir follow<textarea id="campaignFollow" rows="3" placeholder="Siga o perfil e responda PRONTO..."></textarea></label>

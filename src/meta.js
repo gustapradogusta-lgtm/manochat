@@ -45,3 +45,8 @@ export function sendMessage(env, igsid, text, igUserId = env.META_IG_USER_ID) {
 export function getProfile(env, igsid) {
   return callMeta(env, `${igsid}?fields=username,is_user_follow_business`);
 }
+
+export function listMedia(env, limit = 25) {
+  const safeLimit = Math.min(Math.max(Number(limit) || 25, 1), 50);
+  return callMeta(env, `me/media?fields=id,caption,media_type,media_url,thumbnail_url,permalink,timestamp&limit=${safeLimit}`);
+}

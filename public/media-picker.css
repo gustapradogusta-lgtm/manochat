@@ -1,0 +1,77 @@
+.media-input-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+.media-input-row .secondary { white-space: nowrap; }
+.media-picker {
+  border: 1px solid var(--line);
+  background: #f7faf8;
+  border-radius: 16px;
+  padding: 14px;
+  margin: -8px 0 18px;
+}
+.media-picker-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.media-picker-head div { display: grid; gap: 3px; }
+.media-picker-head small { color: var(--muted); font-size: 11px; }
+.media-picker-status, .media-picker-empty {
+  padding: 28px 10px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+.media-grid {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  max-height: 360px;
+  overflow: auto;
+}
+.media-option {
+  display: grid;
+  grid-template-columns: 70px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: #fff;
+  text-align: left;
+  color: var(--ink);
+}
+.media-option:hover { border-color: #79a892; background: #fbfefc; }
+.media-thumb {
+  width: 70px;
+  height: 70px;
+  border-radius: 10px;
+  background: #e8eeea;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+}
+.media-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.media-thumb i { font-size: 24px; color: #829188; }
+.media-copy { display: grid; gap: 5px; min-width: 0; }
+.media-copy small { color: #668075; font-size: 9px; font-weight: 800; letter-spacing: .08em; }
+.media-copy strong {
+  font-size: 12px;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.media-select { font-size: 11px; font-weight: 800; color: var(--green); padding: 8px; }
+@media (max-width: 720px) {
+  .media-input-row { grid-template-columns: 1fr; }
+  .media-option { grid-template-columns: 58px 1fr; }
+  .media-thumb { width: 58px; height: 58px; }
+  .media-select { grid-column: 2; padding: 0 0 4px; }
+  .media-picker { padding: 10px; }
+}

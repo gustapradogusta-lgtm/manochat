@@ -77,7 +77,52 @@ function openCampaign(campaign = null) {
   $('#campaignFollowRequired').checked = campaign ? Boolean(campaign.follow_required) : true;
   $('#campaignStatus').value = campaign?.status || 'active';
   $('#campaignError').textContent = '';
+  $('#mediaPicker').classList.add('hidden');
+  $('#mediaGrid').innerHTML = '';
   $('#campaignDialog').showModal();
+}
+
+function mediaTypeLabel(type) {
+  return ({ VIDEO: 'VÍDEO', REELS: 'REELS', IMAGE: 'FOTO', CAROUSEL_ALBUM: 'CARROSSEL' })[type] || type || 'PUBLICAÇÃO';
+}
+
+function renderMedia(items) {
+  const grid = $('#mediaGrid');
+  if (!items.length) {
+    grid.innerHTML = '<div class="media-picker-empty">Nenhuma publicação encontrada.</div>';
+    return;
+  }
+  grid.innerHTML = items.map((item) => {
+    const image = item.thumbnail_url || item.media_url || '';
+    const caption = String(item.caption || 'Publicação sem legenda').trim();
+    const date = item.timestamp ? new Date(item.timestamp).toLocaleDateString('pt-BR') : '';
+    return `<button class="media-option" type="button" data-media-id="${esc(item.id)}">
+      <span class="media-thumb">${image ? `<img src="${esc(image)}" alt="" loading="lazy">` : '<i>▧</i>'}</span>
+      <span class="media-copy"><small>${esc(mediaTypeLabel(item.media_type))}${date ? ` · ${esc(date)}` : ''}</small><strong>${esc(caption)}</strong></span>
+      <span class="media-select">Selecionar</span>
+    </button>`;
+  }).join('');
+  $$('.media-option', grid).forEach((button) => button.addEventListener('click', () => {
+    $('#campaignMedia').value = button.dataset.mediaId;
+    $('#mediaPicker').classList.add('hidden');
+    toast('Publicação selecionada.');
+  }));
+}
+
+async function openMediaPicker() {
+  const picker = $('#mediaPicker');
+  const status = $('#mediaPickerStatus');
+  picker.classList.remove('hidden');
+  status.classList.remove('hidden');
+  status.textContent = 'Buscando suas publicações…';
+  $('#mediaGrid').innerHTML = '';
+  try {
+    const result = await api('/api/media');
+    status.classList.add('hidden');
+    renderMedia(result.media || []);
+  } catch (error) {
+    status.textContent = error.message;
+  }
 }
 
 $('#loginForm').addEventListener('submit', async (event) => {
@@ -92,6 +137,8 @@ $('#menuToggle').addEventListener('click', () => $('.sidebar').classList.toggle(
 $$('[data-refresh]').forEach((button) => button.addEventListener('click', loadAll));
 $('#newCampaign').addEventListener('click', () => openCampaign());
 $('#newCampaignTop').addEventListener('click', () => openCampaign());
+$('#chooseMedia').addEventListener('click', openMediaPicker);
+$('#closeMediaPicker').addEventListener('click', () => $('#mediaPicker').classList.add('hidden'));
 
 $('#campaignForm').addEventListener('submit', async (event) => {
   if (event.submitter?.value === 'cancel') return;

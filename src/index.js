@@ -1,6 +1,6 @@
 import { eventIdFor, matchesKeyword, nextStep, parseInstagramEvents } from './lib/automation.js';
 import { createSession, validSession, verifyMetaSignature } from './lib/security.js';
-import { getProfile, sendCommentReply, sendMessage, sendPrivateReply } from './meta.js';
+import { getProfile, listMedia, sendCommentReply, sendMessage, sendPrivateReply } from './meta.js';
 
 const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), {
   status,
@@ -362,6 +362,15 @@ export default {
       const denied = await requireAdmin(request, env);
       if (denied) return denied;
       if (path === '/api/overview' && request.method === 'GET') return overview(env);
+      if (path === '/api/media' && request.method === 'GET') {
+        try {
+          const result = await listMedia(env);
+          return json({ media: result.data || [] });
+        } catch (error) {
+          console.error('manochat.media_list_failed', operationalError(error));
+          return json({ error: 'Não foi possível buscar suas publicações. Verifique o token da Meta.' }, error.status || 502);
+        }
+      }
       if (path === '/api/campaigns' && request.method === 'GET') return listCampaigns(env);
       if (path === '/api/campaigns' && request.method === 'POST') return saveCampaign(request, env);
       const match = path.match(/^\/api\/campaigns\/(\d+)$/);
