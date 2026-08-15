@@ -166,6 +166,18 @@ async function saveCampaign(request, env, id) {
   }
 }
 
+async function deleteCampaign(request, env, id) {
+  const body = await request.json().catch(() => ({}));
+  const expectedPassword = String(env.DELETE_PASSWORD || '0000');
+  if (String(body.password || '') !== expectedPassword) return json({ error: 'Senha de exclusão incorreta.' }, 403);
+
+  const existing = await env.DB.prepare('SELECT id FROM campaigns WHERE id=?').bind(id).first();
+  if (!existing) return json({ error: 'Campanha não encontrada.' }, 404);
+
+  await env.DB.prepare('DELETE FROM campaigns WHERE id=?').bind(id).run();
+  return json({ ok: true });
+}
+
 async function logInteraction(env, data) {
   await env.DB.prepare(`INSERT INTO interactions
     (igsid, campaign_id, event_type, direction, status, external_id, detail)
@@ -375,6 +387,7 @@ export default {
       if (path === '/api/campaigns' && request.method === 'POST') return saveCampaign(request, env);
       const match = path.match(/^\/api\/campaigns\/(\d+)$/);
       if (match && request.method === 'PUT') return saveCampaign(request, env, Number(match[1]));
+      if (match && request.method === 'DELETE') return deleteCampaign(request, env, Number(match[1]));
       if (path === '/api/simulate' && request.method === 'POST') return simulate(request, env);
       return json({ error: 'Rota não encontrada.' }, 404);
     }

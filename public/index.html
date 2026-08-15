@@ -109,7 +109,7 @@
 
   <dialog id="campaignDialog">
     <form id="campaignForm" method="dialog">
-      <div class="dialog-head"><div><span class="eyebrow">CONFIGURAÇÃO</span><h2 id="dialogTitle">Nova campanha</h2></div><button class="icon-button" value="cancel" aria-label="Fechar">×</button></div>
+      <div class="dialog-head"><div><span class="eyebrow">CONFIGURAÇÃO</span><h2 id="dialogTitle">Nova campanha</h2></div><button id="closeCampaign" class="icon-button" type="button" aria-label="Fechar">×</button></div>
       <input id="campaignId" type="hidden">
       <div class="form-grid"><label>Nome da campanha<input id="campaignName" required placeholder="Ex.: Material do Reel"></label><label>Palavra-chave<input id="campaignKeyword" required placeholder="QUERO"></label></div>
       <label>ID da publicação <small>Opcional: vazio funciona em qualquer post</small>
@@ -127,7 +127,7 @@
       <label>Link de entrega<input id="campaignUrl" required type="url" placeholder="https://..."></label>
       <div class="form-grid"><label class="switch-row"><span><strong>Exigir follow</strong><small>Antes de entregar</small></span><input id="campaignFollowRequired" type="checkbox" checked><i></i></label><label>Status<select id="campaignStatus"><option value="active">Ativa</option><option value="paused">Pausada</option></select></label></div>
       <p id="campaignError" class="form-error"></p>
-      <div class="dialog-actions"><button class="secondary" value="cancel">Cancelar</button><button id="saveCampaign" class="primary" value="default">Salvar campanha</button></div>
+      <div class="dialog-actions"><button id="deleteCampaign" class="danger-button hidden" type="button">Excluir campanha</button><span class="dialog-actions-main"><button id="cancelCampaign" class="secondary" type="button">Cancelar</button><button id="saveCampaign" class="primary" type="submit">Salvar campanha</button></span></div>
     </form>
   </dialog>
   <div id="toast" role="status"></div>

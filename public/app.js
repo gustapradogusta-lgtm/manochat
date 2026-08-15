@@ -77,6 +77,7 @@ function openCampaign(campaign = null) {
   $('#campaignFollowRequired').checked = campaign ? Boolean(campaign.follow_required) : true;
   $('#campaignStatus').value = campaign?.status || 'active';
   $('#campaignError').textContent = '';
+  $('#deleteCampaign').classList.toggle('hidden', !campaign);
   $('#mediaPicker').classList.add('hidden');
   $('#mediaGrid').innerHTML = '';
   $('#campaignDialog').showModal();
@@ -139,9 +140,25 @@ $('#newCampaign').addEventListener('click', () => openCampaign());
 $('#newCampaignTop').addEventListener('click', () => openCampaign());
 $('#chooseMedia').addEventListener('click', openMediaPicker);
 $('#closeMediaPicker').addEventListener('click', () => $('#mediaPicker').classList.add('hidden'));
+$('#closeCampaign').addEventListener('click', () => $('#campaignDialog').close());
+$('#cancelCampaign').addEventListener('click', () => $('#campaignDialog').close());
+$('#deleteCampaign').addEventListener('click', async () => {
+  const id = $('#campaignId').value;
+  if (!id) return;
+  const password = window.prompt('Digite a senha para excluir esta campanha:');
+  if (password === null) return;
+  try {
+    await api(`/api/campaigns/${id}`, { method: 'DELETE', body: JSON.stringify({ password }) });
+    $('#campaignDialog').close();
+    toast('Campanha excluída.');
+    await loadAll();
+    navigate('campaigns');
+  } catch (error) {
+    $('#campaignError').textContent = error.message;
+  }
+});
 
 $('#campaignForm').addEventListener('submit', async (event) => {
-  if (event.submitter?.value === 'cancel') return;
   event.preventDefault();
   const id = $('#campaignId').value;
   const body = {
