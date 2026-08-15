@@ -42,7 +42,7 @@ function renderOverview() {
   pill.innerHTML = `<i></i> ${connection.metaConfigured ? 'Meta conectada' : 'Aguardando Meta'}`;
   const list = $('#activityList');
   if (!interactions.length) return;
-  const labels = { private_reply: 'Private reply', ask_follow: 'Pedido de follow', deliver: 'Conteúdo entregue', profile_check: 'Verificação do perfil' };
+  const labels = { private_reply: 'Private reply', comment_reply: 'Resposta pública', ask_follow: 'Pedido de follow', deliver: 'Conteúdo entregue', profile_check: 'Verificação do perfil' };
   list.innerHTML = interactions.map((item) => `<div class="activity-row"><span>${item.status === 'sent' ? '✓' : '!'}</span><div><strong>${esc(labels[item.event_type] || item.event_type)}</strong><p>${esc(item.username ? `@${item.username}` : item.campaign_name || 'Evento do sistema')} · ${esc(item.status)}</p></div><time>${new Date(`${item.created_at}Z`).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</time></div>`).join('');
 }
 
@@ -69,6 +69,7 @@ function openCampaign(campaign = null) {
   $('#campaignName').value = campaign?.name || '';
   $('#campaignKeyword').value = campaign?.keyword || '';
   $('#campaignMedia').value = campaign?.media_id || '';
+  $('#campaignPublicReply').value = campaign ? (campaign.public_reply ?? 'Te enviei no Direct! 😊') : 'Te enviei no Direct! 😊';
   $('#campaignFirst').value = campaign?.first_message || 'Oi! Vi seu comentário 😊 Responda QUERO aqui para eu liberar o conteúdo.';
   $('#campaignFollow').value = campaign?.follow_message || 'Falta só um passo: siga o meu perfil e responda PRONTO por aqui.';
   $('#campaignDelivery').value = campaign?.delivery_message || 'Perfeito! Aqui está o conteúdo que prometi:';
@@ -98,6 +99,7 @@ $('#campaignForm').addEventListener('submit', async (event) => {
   const id = $('#campaignId').value;
   const body = {
     name: $('#campaignName').value, keyword: $('#campaignKeyword').value, media_id: $('#campaignMedia').value,
+    public_reply: $('#campaignPublicReply').value,
     first_message: $('#campaignFirst').value, follow_message: $('#campaignFollow').value,
     delivery_message: $('#campaignDelivery').value, delivery_url: $('#campaignUrl').value,
     follow_required: $('#campaignFollowRequired').checked, status: $('#campaignStatus').value
