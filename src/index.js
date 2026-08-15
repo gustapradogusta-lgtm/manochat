@@ -1,6 +1,6 @@
 import { eventIdFor, matchesKeyword, nextStep, parseInstagramEvents } from './lib/automation.js';
 import { createSession, validSession, verifyMetaSignature } from './lib/security.js';
-import { getProfile, sendMessage, sendPrivateReply } from './meta.js';
+import { getProfile, sendCommentReply, sendMessage, sendPrivateReply } from './meta.js';
 
 const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), {
   status,
@@ -232,6 +232,18 @@ async function handleComment(env, event) {
     }
     await logInteraction(env, { igsid: recipientId, campaignId: campaign.id, eventType: 'private_reply', direction: 'outbound', status: 'sent', externalId: sent.message_id });
     console.info('manochat.private_reply_sent', { campaignId: campaign.id });
+
+    const publicReply = String(env.PUBLIC_COMMENT_REPLY || 'Te enviei no Direct! 😊').trim();
+    if (publicReply) {
+      try {
+        const reply = await sendCommentReply(env, commentId, publicReply);
+        await logInteraction(env, { igsid: recipientId, campaignId: campaign.id, eventType: 'comment_reply', direction: 'outbound', status: 'sent', externalId: reply.id });
+        console.info('manochat.comment_reply_sent', { campaignId: campaign.id });
+      } catch (error) {
+        await logInteraction(env, { igsid: recipientId, campaignId: campaign.id, eventType: 'comment_reply', direction: 'outbound', status: 'failed', externalId: commentId, detail: safeDetail(error) });
+        console.error('manochat.comment_reply_failed', operationalError(error));
+      }
+    }
   } catch (error) {
     await logInteraction(env, { igsid, campaignId: campaign.id, eventType: 'private_reply', direction: 'outbound', status: 'failed', externalId: commentId, detail: safeDetail(error) });
     console.error('manochat.private_reply_failed', operationalError(error));

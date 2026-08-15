@@ -28,6 +28,13 @@ export function sendPrivateReply(env, commentId, text, igUserId = env.META_IG_US
   });
 }
 
+export function sendCommentReply(env, commentId, text) {
+  return callMeta(env, `${commentId}/replies`, {
+    method: 'POST',
+    body: JSON.stringify({ message: text })
+  });
+}
+
 export function sendMessage(env, igsid, text, igUserId = env.META_IG_USER_ID) {
   return callMeta(env, `${igUserId}/messages`, {
     method: 'POST',
