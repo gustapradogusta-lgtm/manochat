@@ -1,4 +1,4 @@
-import { eventIdFor, matchesKeyword, nextStep, parseInstagramEvents } from './lib/automation.js';
+import { eventIdFor, isOwnInstagramComment, matchesCommentCampaign, matchesKeyword, nextStep, parseInstagramEvents } from './lib/automation.js';
 import { createSession, validSession, verifyMetaSignature } from './lib/security.js';
 import { getProfile, listMedia, sendCommentReply, sendMessage, sendPrivateReply } from './meta.js';
 
@@ -132,14 +132,15 @@ function cleanCampaign(body) {
     followMessage: String(body.follow_message || '').trim(),
     deliveryMessage: String(body.delivery_message || '').trim(),
     deliveryUrl: String(body.delivery_url || '').trim(),
+    matchAllComments: body.match_all_comments ? 1 : 0,
     followRequired: body.follow_required ? 1 : 0,
     status: body.status === 'paused' ? 'paused' : 'active'
   };
 }
 
 function validateCampaign(campaign) {
-  if (!campaign.name || !campaign.keyword || !campaign.firstMessage || !campaign.deliveryMessage || !campaign.deliveryUrl) {
-    return 'Preencha nome, palavra-chave, primeira mensagem, mensagem de entrega e link.';
+  if (!campaign.name || (!campaign.matchAllComments && !campaign.keyword) || !campaign.firstMessage || !campaign.deliveryMessage || !campaign.deliveryUrl) {
+    return 'Preencha nome, palavra-chave (ou ative qualquer comentário), primeira mensagem, mensagem de entrega e link.';
   }
   try { new URL(campaign.deliveryUrl); } catch { return 'Informe um link válido, começando com https://.'; }
   return null;
@@ -153,15 +154,15 @@ async function saveCampaign(request, env, id) {
   try {
     if (id) {
       await env.DB.prepare(`UPDATE campaigns SET name=?, keyword=?, media_id=?, public_reply=?, first_message=?, follow_message=?,
-        delivery_message=?, delivery_url=?, follow_required=?, status=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`)
+        delivery_message=?, delivery_url=?, match_all_comments=?, follow_required=?, status=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`)
         .bind(campaign.name, campaign.keyword, campaign.mediaId, campaign.publicReply, campaign.firstMessage, campaign.followMessage,
-          campaign.deliveryMessage, campaign.deliveryUrl, campaign.followRequired, campaign.status, id).run();
+          campaign.deliveryMessage, campaign.deliveryUrl, campaign.matchAllComments, campaign.followRequired, campaign.status, id).run();
     } else {
       await env.DB.prepare(`INSERT INTO campaigns
-        (name, keyword, media_id, public_reply, first_message, follow_message, delivery_message, delivery_url, follow_required, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        (name, keyword, media_id, public_reply, first_message, follow_message, delivery_message, delivery_url, match_all_comments, follow_required, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
         .bind(campaign.name, campaign.keyword, campaign.mediaId, campaign.publicReply, campaign.firstMessage, campaign.followMessage,
-          campaign.deliveryMessage, campaign.deliveryUrl, campaign.followRequired, campaign.status).run();
+          campaign.deliveryMessage, campaign.deliveryUrl, campaign.matchAllComments, campaign.followRequired, campaign.status).run();
     }
     return json({ ok: true });
   } catch (error) {
@@ -203,7 +204,7 @@ async function campaignForComment(env, event) {
   const mediaId = event.media?.id || event.media_id || null;
   const rows = await env.DB.prepare(`SELECT * FROM campaigns WHERE status='active'
     AND (media_id IS NULL OR media_id='' OR media_id=?) ORDER BY media_id IS NOT NULL DESC, id DESC`).bind(mediaId).all();
-  return (rows.results || []).find((campaign) => matchesKeyword(event.text, campaign.keyword));
+  return (rows.results || []).find((campaign) => matchesCommentCampaign(event.text, campaign));
 }
 
 async function campaignForMessage(env, text) {
@@ -217,6 +218,11 @@ async function handleComment(env, event) {
     console.warn('manochat.comment_ignored', { reason: 'missing_comment_id' });
     return;
   }
+  const igUserId = env.META_IG_USER_ID || event.entryId;
+  if (isOwnInstagramComment(event, igUserId)) {
+    console.info('manochat.comment_ignored', { reason: 'own_comment' });
+    return;
+  }
   if (!(await claimEvent(env, eventIdFor('comment', event), 'comment'))) {
     console.info('manochat.comment_ignored', { reason: 'duplicate' });
     return;
@@ -228,7 +234,6 @@ async function handleComment(env, event) {
   }
 
   const igsid = event.from?.id || event.user_id || null;
-  const igUserId = env.META_IG_USER_ID || event.entryId;
   if (!igUserId) {
     console.error('manochat.private_reply_failed', { message: 'Instagram professional account ID is missing' });
     return;

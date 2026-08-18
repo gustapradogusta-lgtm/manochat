@@ -9,6 +9,15 @@ export function matchesKeyword(text, keyword) {
   return haystack.split(/[^a-z0-9_]+/i).includes(needle) || haystack.includes(needle);
 }
 
+export function matchesCommentCampaign(text, campaign = {}) {
+  return Boolean(campaign.match_all_comments) || matchesKeyword(text, campaign.keyword);
+}
+
+export function isOwnInstagramComment(event = {}, instagramUserId) {
+  const authorId = event.from?.id || event.user_id || null;
+  return Boolean(authorId && instagramUserId && String(authorId) === String(instagramUserId));
+}
+
 export function nextStep({ stage, inboundText, followsBusiness, followRequired }) {
   const text = normalizeText(inboundText);
 

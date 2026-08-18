@@ -60,7 +60,7 @@ function renderOverview() {
 function renderCampaigns() {
   const list = $('#campaignList');
   if (!state.campaigns.length) { list.innerHTML = '<div class="panel empty"><strong>Nenhuma campanha</strong><p>Crie a primeira automação para começar.</p></div>'; return; }
-  list.innerHTML = state.campaigns.map((c) => `<article class="campaign-card"><div class="campaign-title"><span>↗</span><div><h3>${esc(c.name)} <span class="keyword">${esc(c.keyword)}</span></h3><p>${c.media_id ? `Publicação ${esc(c.media_id)}` : 'Qualquer publicação'} · ${c.follow_required ? 'follow obrigatório' : 'entrega direta'}</p></div></div><div class="campaign-stats"><span><strong>${c.leads || 0}</strong><small>CONTATOS</small></span><span><strong>${c.delivered || 0}</strong><small>ENTREGAS</small></span><em class="state ${c.status}">${c.status === 'active' ? 'ATIVA' : 'PAUSADA'}</em><button class="icon-button edit-campaign" data-id="${c.id}" aria-label="Editar campanha">⋯</button></div></article>`).join('');
+  list.innerHTML = state.campaigns.map((c) => `<article class="campaign-card"><div class="campaign-title"><span>↗</span><div><h3>${esc(c.name)} <span class="keyword">${c.match_all_comments ? 'QUALQUER COMENTÁRIO' : esc(c.keyword)}</span></h3><p>${c.media_id ? `Publicação ${esc(c.media_id)}` : 'Qualquer publicação'} · ${c.follow_required ? 'follow obrigatório' : 'entrega direta'}</p></div></div><div class="campaign-stats"><span><strong>${c.leads || 0}</strong><small>CONTATOS</small></span><span><strong>${c.delivered || 0}</strong><small>ENTREGAS</small></span><em class="state ${c.status}">${c.status === 'active' ? 'ATIVA' : 'PAUSADA'}</em><button class="icon-button edit-campaign" data-id="${c.id}" aria-label="Editar campanha">⋯</button></div></article>`).join('');
   $$('.edit-campaign').forEach((button) => button.addEventListener('click', () => openCampaign(state.campaigns.find((c) => c.id === Number(button.dataset.id)))));
   $('#simCampaign').innerHTML = state.campaigns.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
 }
@@ -79,6 +79,8 @@ function openCampaign(campaign = null) {
   $('#campaignId').value = campaign?.id || '';
   $('#campaignName').value = campaign?.name || '';
   $('#campaignKeyword').value = campaign?.keyword || '';
+  $('#campaignMatchAll').checked = campaign ? Boolean(campaign.match_all_comments) : false;
+  syncCommentTriggerFields();
   $('#campaignMedia').value = campaign?.media_id || '';
   $('#campaignPublicReply').value = campaign ? (campaign.public_reply ?? 'Te enviei no Direct! 😊') : 'Te enviei no Direct! 😊';
   $('#campaignFirst').value = campaign?.first_message || 'Oi! Vi seu comentário 😊 Responda QUERO aqui para eu liberar o conteúdo.';
@@ -92,6 +94,13 @@ function openCampaign(campaign = null) {
   $('#mediaPicker').classList.add('hidden');
   $('#mediaGrid').innerHTML = '';
   $('#campaignDialog').showModal();
+}
+
+function syncCommentTriggerFields() {
+  const matchAll = $('#campaignMatchAll').checked;
+  $('#campaignKeyword').required = !matchAll;
+  $('#campaignKeyword').disabled = matchAll;
+  $('#campaignKeywordHint').textContent = matchAll ? 'Ignorada neste modo' : 'Obrigatória quando o modo abaixo estiver desligado';
 }
 
 function mediaTypeLabel(type) {
@@ -149,6 +158,7 @@ $('#menuToggle').addEventListener('click', () => $('.sidebar').classList.toggle(
 $$('[data-refresh]').forEach((button) => button.addEventListener('click', loadAll));
 $('#newCampaign').addEventListener('click', () => openCampaign());
 $('#newCampaignTop').addEventListener('click', () => openCampaign());
+$('#campaignMatchAll').addEventListener('change', syncCommentTriggerFields);
 $('#chooseMedia').addEventListener('click', openMediaPicker);
 $('#closeMediaPicker').addEventListener('click', () => $('#mediaPicker').classList.add('hidden'));
 $('#closeCampaign').addEventListener('click', () => $('#campaignDialog').close());
@@ -174,6 +184,7 @@ $('#campaignForm').addEventListener('submit', async (event) => {
   const id = $('#campaignId').value;
   const body = {
     name: $('#campaignName').value, keyword: $('#campaignKeyword').value, media_id: $('#campaignMedia').value,
+    match_all_comments: $('#campaignMatchAll').checked,
     public_reply: $('#campaignPublicReply').value,
     first_message: $('#campaignFirst').value, follow_message: $('#campaignFollow').value,
     delivery_message: $('#campaignDelivery').value, delivery_url: $('#campaignUrl').value,
