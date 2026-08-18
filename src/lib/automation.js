@@ -4,9 +4,13 @@ export function normalizeText(value = '') {
 
 export function matchesKeyword(text, keyword) {
   const haystack = normalizeText(text);
-  const needle = normalizeText(keyword);
-  if (!needle) return false;
-  return haystack.split(/[^a-z0-9_]+/i).includes(needle) || haystack.includes(needle);
+  const needles = String(keyword || '')
+    .split(/[,;\n]+/)
+    .map(normalizeText)
+    .filter(Boolean);
+  if (!needles.length) return false;
+  const words = haystack.split(/[^a-z0-9_]+/i);
+  return needles.some((needle) => words.includes(needle) || haystack.includes(needle));
 }
 
 export function matchesCommentCampaign(text, campaign = {}) {

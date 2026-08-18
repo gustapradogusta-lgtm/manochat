@@ -100,7 +100,7 @@ function syncCommentTriggerFields() {
   const matchAll = $('#campaignMatchAll').checked;
   $('#campaignKeyword').required = !matchAll;
   $('#campaignKeyword').disabled = matchAll;
-  $('#campaignKeywordHint').textContent = matchAll ? 'Ignorada neste modo' : 'Obrigatória quando o modo abaixo estiver desligado';
+  $('#campaignKeywordHint').textContent = matchAll ? 'Ignoradas neste modo' : 'Separe por vírgulas: QUERO, GUIA, MATERIAL';
 }
 
 function mediaTypeLabel(type) {

@@ -140,7 +140,7 @@ function cleanCampaign(body) {
 
 function validateCampaign(campaign) {
   if (!campaign.name || (!campaign.matchAllComments && !campaign.keyword) || !campaign.firstMessage || !campaign.deliveryMessage || !campaign.deliveryUrl) {
-    return 'Preencha nome, palavra-chave (ou ative qualquer comentário), primeira mensagem, mensagem de entrega e link.';
+    return 'Preencha nome, ao menos uma palavra-chave (ou ative qualquer comentário), primeira mensagem, mensagem de entrega e link.';
   }
   try { new URL(campaign.deliveryUrl); } catch { return 'Informe um link válido, começando com https://.'; }
   return null;

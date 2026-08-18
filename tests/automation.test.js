@@ -8,6 +8,13 @@ test('palavra-chave ignora caixa e acentos', () => {
   assert.equal(matchesKeyword('não tenho interesse', 'quero'), false);
 });
 
+test('aceita várias palavras-chave separadas por vírgula, ponto e vírgula ou linha', () => {
+  assert.equal(matchesKeyword('Pode me mandar o GUIA?', 'quero, guia, material'), true);
+  assert.equal(matchesKeyword('Eu quero a planilha', 'ebook; planilha'), true);
+  assert.equal(matchesKeyword('Envie o conteúdo', 'curso\nconteúdo'), true);
+  assert.equal(matchesKeyword('Só estou olhando', 'quero, guia, material'), false);
+});
+
 test('modo qualquer comentário ignora o texto somente quando ativado', () => {
   assert.equal(matchesCommentCampaign('Gostei muito!', { keyword: 'quero', match_all_comments: 1 }), true);
   assert.equal(matchesCommentCampaign('Gostei muito!', { keyword: 'quero', match_all_comments: 0 }), false);
