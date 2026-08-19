@@ -7,12 +7,13 @@ Automação própria de comentário para Direct no Instagram, construída para r
 - Campanhas com uma ou várias palavras-chave por publicação ou para qualquer publicação.
 - Modo opcional para disparar com qualquer comentário principal.
 - Respostas encadeadas e comentários do próprio perfil são ignorados para evitar reenvios.
+- Respostas e menções de Stories são ignoradas.
 - Private reply automática após o comentário.
 - Resposta pública personalizável no comentário.
 - Continuação somente depois da resposta do usuário.
 - Verificação de `is_user_follow_business`.
 - Follow-gate opcional e entrega automática do link.
-- Entrada alternativa quando o contato chama diretamente no Direct.
+- O Direct só continua uma conversa previamente iniciada por comentário válido em post/Reels.
 - Deduplicação persistente de comentários e mensagens no D1.
 - Registro de interações e erros da Meta sem salvar tokens.
 - Painel administrativo responsivo e protegido por sessão.
@@ -123,6 +124,7 @@ node --check public/app.js
 - Mensagens seguintes dentro da janela de atendimento permitida.
 - A resposta pública é opcional e configurada por campanha; o sistema não curte comentários automaticamente.
 - Somente comentários principais iniciam o fluxo. Respostas a comentários são ignoradas.
+- Mensagens avulsas, respostas e menções de Stories não iniciam campanhas.
 - Erros da Meta são registrados com código e subcódigo para diagnóstico.
 
 ## Privacidade
