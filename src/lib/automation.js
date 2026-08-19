@@ -22,6 +22,10 @@ export function isOwnInstagramComment(event = {}, instagramUserId) {
   return Boolean(authorId && instagramUserId && String(authorId) === String(instagramUserId));
 }
 
+export function isInstagramCommentReply(event = {}) {
+  return Boolean(event.parent_id || event.parent?.id || event.reply_to?.id);
+}
+
 export function nextStep({ stage, inboundText, followsBusiness, followRequired }) {
   const text = normalizeText(inboundText);
 

@@ -1,4 +1,4 @@
-import { eventIdFor, isOwnInstagramComment, matchesCommentCampaign, matchesKeyword, nextStep, parseInstagramEvents } from './lib/automation.js';
+import { eventIdFor, isInstagramCommentReply, isOwnInstagramComment, matchesCommentCampaign, matchesKeyword, nextStep, parseInstagramEvents } from './lib/automation.js';
 import { createSession, validSession, verifyMetaSignature } from './lib/security.js';
 import { getProfile, listMedia, sendCommentReply, sendMessage, sendPrivateReply } from './meta.js';
 
@@ -216,6 +216,10 @@ async function handleComment(env, event) {
   const commentId = event.id || event.comment_id;
   if (!commentId) {
     console.warn('manochat.comment_ignored', { reason: 'missing_comment_id' });
+    return;
+  }
+  if (isInstagramCommentReply(event)) {
+    console.info('manochat.comment_ignored', { reason: 'comment_reply' });
     return;
   }
   const igUserId = env.META_IG_USER_ID || event.entryId;

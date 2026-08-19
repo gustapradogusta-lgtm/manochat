@@ -4,8 +4,11 @@ Automação própria de comentário para Direct no Instagram, construída para r
 
 ## O que já funciona
 
-- Campanhas com palavra-chave por publicação ou para qualquer publicação.
+- Campanhas com uma ou várias palavras-chave por publicação ou para qualquer publicação.
+- Modo opcional para disparar com qualquer comentário principal.
+- Respostas encadeadas e comentários do próprio perfil são ignorados para evitar reenvios.
 - Private reply automática após o comentário.
+- Resposta pública personalizável no comentário.
 - Continuação somente depois da resposta do usuário.
 - Verificação de `is_user_follow_business`.
 - Follow-gate opcional e entrega automática do link.
@@ -28,7 +31,10 @@ Nenhuma API de inteligência artificial é utilizada. As mensagens seguem regras
 
 ```text
 manochat/
-├── migrations/0001_initial.sql
+├── migrations/
+│   ├── 0001_initial.sql
+│   ├── 0002_public_reply.sql
+│   └── 0003_match_all_comments.sql
 ├── public/
 │   ├── index.html
 │   ├── styles.css
@@ -71,6 +77,7 @@ As etapas abaixo serão realizadas em conjunto na Cloudflare quando a conta da M
    npx wrangler secret put META_VERIFY_TOKEN
    npx wrangler secret put META_APP_SECRET
    npx wrangler secret put META_IG_USER_ID
+   npx wrangler secret put DELETE_PASSWORD
    ```
 
 5. Publicar:
@@ -97,6 +104,7 @@ As etapas abaixo serão realizadas em conjunto na Cloudflare quando a conta da M
 | `META_VERIFY_TOKEN` | Frase secreta usada na verificação do webhook |
 | `META_APP_SECRET` | Valida a assinatura de cada evento recebido da Meta |
 | `META_IG_USER_ID` | ID da conta profissional autorizada |
+| `DELETE_PASSWORD` | Senha exigida para excluir campanhas |
 
 Nunca salve esses valores no GitHub, no `wrangler.toml` ou em prints públicos.
 
@@ -113,7 +121,8 @@ node --check public/app.js
 - Uma private reply por comentário, enviada dentro da janela permitida pela Meta.
 - Continuação do fluxo somente depois que o destinatário responder.
 - Mensagens seguintes dentro da janela de atendimento permitida.
-- O sistema não responde publicamente nem curte comentários automaticamente.
+- A resposta pública é opcional e configurada por campanha; o sistema não curte comentários automaticamente.
+- Somente comentários principais iniciam o fluxo. Respostas a comentários são ignoradas.
 - Erros da Meta são registrados com código e subcódigo para diagnóstico.
 
 ## Privacidade

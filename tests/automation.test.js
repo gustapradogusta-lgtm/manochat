@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isOwnInstagramComment, matchesCommentCampaign, matchesKeyword, nextStep, parseInstagramEvents } from '../src/lib/automation.js';
+import { isInstagramCommentReply, isOwnInstagramComment, matchesCommentCampaign, matchesKeyword, nextStep, parseInstagramEvents } from '../src/lib/automation.js';
 
 test('palavra-chave ignora caixa e acentos', () => {
   assert.equal(matchesKeyword('Eu QUERO o material!', 'quero'), true);
@@ -23,6 +23,12 @@ test('modo qualquer comentário ignora o texto somente quando ativado', () => {
 test('comentário do próprio Instagram conectado é identificado', () => {
   assert.equal(isOwnInstagramComment({ from: { id: 'business-1' } }, 'business-1'), true);
   assert.equal(isOwnInstagramComment({ from: { id: 'customer-1' } }, 'business-1'), false);
+});
+
+test('resposta encadeada em comentário é identificada para não disparar novamente', () => {
+  assert.equal(isInstagramCommentReply({ id: 'reply-1', parent_id: 'comment-1' }), true);
+  assert.equal(isInstagramCommentReply({ id: 'reply-2', parent: { id: 'comment-1' } }), true);
+  assert.equal(isInstagramCommentReply({ id: 'comment-1', text: 'QUERO' }), false);
 });
 
 test('follow gate entrega somente após seguir', () => {
