@@ -1,4 +1,4 @@
-import { eventIdFor, isInstagramCommentReply, isOwnInstagramComment, matchesCommentCampaign, matchesKeyword, nextStep, parseInstagramEvents } from './lib/automation.js';
+import { canContinueCommentConversation, eventIdFor, isInstagramCommentReply, isInstagramStoryMessage, isOwnInstagramComment, matchesCommentCampaign, nextStep, parseInstagramEvents } from './lib/automation.js';
 import { createSession, validSession, verifyMetaSignature } from './lib/security.js';
 import { getProfile, listMedia, sendCommentReply, sendMessage, sendPrivateReply } from './meta.js';
 
@@ -207,11 +207,6 @@ async function campaignForComment(env, event) {
   return (rows.results || []).find((campaign) => matchesCommentCampaign(event.text, campaign));
 }
 
-async function campaignForMessage(env, text) {
-  const rows = await env.DB.prepare("SELECT * FROM campaigns WHERE status='active' ORDER BY id DESC").all();
-  return (rows.results || []).find((campaign) => matchesKeyword(text, campaign.keyword)) || rows.results?.[0];
-}
-
 async function handleComment(env, event) {
   const commentId = event.id || event.comment_id;
   if (!commentId) {
@@ -280,15 +275,21 @@ async function handleMessage(env, event) {
   const igsid = event.senderId;
   const text = event.message?.text || '';
   const igUserId = env.META_IG_USER_ID || event.recipientId || event.entryId;
-  if (!igsid || !text || !(await claimEvent(env, eventIdFor('message', { mid, timestamp: event.timestamp }), 'message'))) return;
-
-  let conversation = await env.DB.prepare(`SELECT v.*, c.* FROM conversations v
-    JOIN campaigns c ON c.id=v.campaign_id WHERE v.igsid=?`).bind(igsid).first();
-  if (!conversation) {
-    const campaign = await campaignForMessage(env, text);
-    if (!campaign) return;
-    conversation = { ...campaign, campaign_id: campaign.id, stage: 'awaiting_reply' };
+  if (!igsid || !text) return;
+  if (isInstagramStoryMessage(event)) {
+    console.info('manochat.message_ignored', { reason: 'story_message' });
+    return;
   }
+
+  const conversation = await env.DB.prepare(`SELECT v.*, c.* FROM conversations v
+    JOIN campaigns c ON c.id=v.campaign_id WHERE v.igsid=?
+    AND v.source_comment_id IS NOT NULL
+    AND v.stage IN ('awaiting_reply', 'awaiting_follow')`).bind(igsid).first();
+  if (!canContinueCommentConversation(conversation)) {
+    console.info('manochat.message_ignored', { reason: 'no_comment_conversation' });
+    return;
+  }
+  if (!(await claimEvent(env, eventIdFor('message', { mid, timestamp: event.timestamp }), 'message'))) return;
 
   let profile = {};
   try { profile = await getProfile(env, igsid); } catch (error) {

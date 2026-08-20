@@ -26,6 +26,26 @@ export function isInstagramCommentReply(event = {}) {
   return Boolean(event.parent_id || event.parent?.id || event.reply_to?.id);
 }
 
+export function isInstagramStoryMessage(event = {}) {
+  const message = event.message || {};
+  const referralSource = message.referral?.source || event.referral?.source || '';
+  const hasStoryAttachment = (message.attachments || []).some((attachment) =>
+    String(attachment.type || '').toLowerCase().includes('story'));
+  return Boolean(
+    message.reply_to?.story ||
+    message.story ||
+    String(referralSource).toLowerCase().includes('story') ||
+    hasStoryAttachment
+  );
+}
+
+export function canContinueCommentConversation(conversation) {
+  return Boolean(
+    conversation?.source_comment_id &&
+    ['awaiting_reply', 'awaiting_follow'].includes(conversation.stage)
+  );
+}
+
 export function nextStep({ stage, inboundText, followsBusiness, followRequired }) {
   const text = normalizeText(inboundText);
 

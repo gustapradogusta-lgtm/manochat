@@ -14,6 +14,7 @@ Automação própria de comentário para Direct no Instagram, construída para r
 - Verificação de `is_user_follow_business`.
 - Follow-gate opcional e entrega automática do link.
 - O Direct só continua uma conversa previamente iniciada por comentário válido em post/Reels.
+- A continuidade exige `source_comment_id` e uma etapa pendente; registros antigos sem origem em comentário são ignorados.
 - Deduplicação persistente de comentários e mensagens no D1.
 - Registro de interações e erros da Meta sem salvar tokens.
 - Painel administrativo responsivo e protegido por sessão.

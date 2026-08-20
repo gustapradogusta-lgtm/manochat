@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isInstagramCommentReply, isOwnInstagramComment, matchesCommentCampaign, matchesKeyword, nextStep, parseInstagramEvents } from '../src/lib/automation.js';
+import { canContinueCommentConversation, isInstagramCommentReply, isInstagramStoryMessage, isOwnInstagramComment, matchesCommentCampaign, matchesKeyword, nextStep, parseInstagramEvents } from '../src/lib/automation.js';
 
 test('palavra-chave ignora caixa e acentos', () => {
   assert.equal(matchesKeyword('Eu QUERO o material!', 'quero'), true);
@@ -29,6 +29,21 @@ test('resposta encadeada em comentário é identificada para não disparar novam
   assert.equal(isInstagramCommentReply({ id: 'reply-1', parent_id: 'comment-1' }), true);
   assert.equal(isInstagramCommentReply({ id: 'reply-2', parent: { id: 'comment-1' } }), true);
   assert.equal(isInstagramCommentReply({ id: 'comment-1', text: 'QUERO' }), false);
+});
+
+test('resposta ou menção de Story é identificada para ser ignorada', () => {
+  assert.equal(isInstagramStoryMessage({ message: { reply_to: { story: { id: 'story-1' } } } }), true);
+  assert.equal(isInstagramStoryMessage({ message: { referral: { source: 'STORY' } } }), true);
+  assert.equal(isInstagramStoryMessage({ message: { attachments: [{ type: 'story_mention' }] } }), true);
+  assert.equal(isInstagramStoryMessage({ message: { text: 'QUERO' } }), false);
+});
+
+test('Direct só continua quando nasceu de comentário e ainda está aguardando ação', () => {
+  assert.equal(canContinueCommentConversation({ source_comment_id: 'comment-1', stage: 'awaiting_reply' }), true);
+  assert.equal(canContinueCommentConversation({ source_comment_id: 'comment-1', stage: 'awaiting_follow' }), true);
+  assert.equal(canContinueCommentConversation({ source_comment_id: null, stage: 'awaiting_reply' }), false);
+  assert.equal(canContinueCommentConversation({ source_comment_id: 'comment-1', stage: 'delivered' }), false);
+  assert.equal(canContinueCommentConversation(null), false);
 });
 
 test('follow gate entrega somente após seguir', () => {
