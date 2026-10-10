@@ -10,6 +10,9 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css" />
   <link rel="stylesheet" href="/media-picker.css" />
+  <link rel="stylesheet" href="/design-update.css" />
+  <link rel="stylesheet" href="/premium.css" />
+  <script>try{document.documentElement.dataset.theme=localStorage.getItem("manochat-theme")==="dark"?"dark":"light"}catch{}</script>
 </head>
 <body>
   <div id="login" class="login-shell hidden">
@@ -45,6 +48,8 @@
       <nav aria-label="Navegação principal">
         <button class="nav-item active" data-view="overview"><span>⌂</span> Visão geral</button>
         <button class="nav-item" data-view="campaigns"><span>✦</span> Campanhas</button>
+        <button class="nav-item" data-view="contacts"><span>◎</span> Contatos</button>
+        <button class="nav-item" data-view="events"><span>≡</span> Eventos</button>
         <button class="nav-item" data-view="simulator"><span>▷</span> Simulador</button>
         <button class="nav-item" data-view="connection"><span>⌁</span> Conexão Meta</button>
       </nav>
@@ -58,7 +63,7 @@
       <header class="topbar">
         <button id="menuToggle" class="menu-toggle" aria-label="Abrir menu">☰</button>
         <div><span class="breadcrumb">PAINEL / <b id="breadcrumb">VISÃO GERAL</b></span></div>
-        <div class="top-actions"><span id="connectionPill" class="status-pill waiting"><i></i> Aguardando Meta</span><button id="newCampaignTop" class="primary compact">+ Nova campanha</button></div>
+        <div class="top-actions"><div class="theme-control" role="group" aria-label="Aparência"><button type="button" data-theme-choice="light" aria-pressed="true">☀ Clean</button><button type="button" data-theme-choice="dark" aria-pressed="false">☾ Dark</button></div><span id="connectionPill" class="status-pill waiting"><i></i> Aguardando Meta</span><button id="newCampaignTop" class="primary compact">+ Nova campanha</button></div>
       </header>
 
       <div class="content">
@@ -70,13 +75,33 @@
             <article class="metric"><span class="metric-icon amber">✓</span><small>Conteúdos entregues</small><strong id="metricDelivered">—</strong><p>Funis concluídos com sucesso</p></article>
           </div>
           <div class="overview-grid">
-            <article class="panel activity-panel"><div class="panel-head"><div><span class="eyebrow">ÚLTIMOS EVENTOS</span><h2>Atividade recente</h2></div><span class="live"><i></i> AO VIVO</span></div><div id="activityList" class="activity-list"><div class="empty"><span>↗</span><strong>Nenhuma interação ainda</strong><p>Os eventos aparecerão aqui quando a automação começar.</p></div></div></article>
+            <article class="panel activity-panel"><div class="panel-head"><div><span class="eyebrow">ÚLTIMOS EVENTOS</span><h2>Atividade recente</h2></div><span class="live"><i></i> HISTÓRICO</span></div><div id="activityList" class="activity-list" tabindex="0" role="region" aria-label="Últimos eventos"><div class="empty"><span>↗</span><strong>Nenhuma interação ainda</strong><p>Os eventos aparecerão aqui quando a automação começar.</p></div></div><div class="activity-footer"><span>Até 15 eventos recentes</span><button id="viewAllEvents" class="secondary compact" type="button">Ver todos →</button></div></article>
             <article class="panel flow-panel"><span class="eyebrow">COMO FUNCIONA</span><h2>Seu fluxo ativo</h2><div class="flow"><div><b>1</b><span><strong>Comentário</strong><small>Detecta a palavra-chave</small></span></div><i></i><div><b>2</b><span><strong>Mensagem privada</strong><small>Convida para responder</small></span></div><i></i><div><b>3</b><span><strong>Verificação</strong><small>Confere se segue o perfil</small></span></div><i></i><div><b>4</b><span><strong>Entrega</strong><small>Libera o conteúdo</small></span></div></div></article>
           </div>
         </section>
 
+        <section id="contactsView" class="view"><div class="page-heading"><div><span class="eyebrow">ORGANIZE SUA AUDIÊNCIA</span><h1>Contatos</h1><p>Perfis registrados organizados por interesse e etapa.</p></div></div><article class="panel"><div class="contact-filters"><label>Buscar contato<input id="contactSearch" type="search" placeholder="Nome ou @perfil"></label><label>Etiqueta<select id="contactTagFilter"><option value="">Todas as etiquetas</option></select></label></div><div id="contactCount" class="events-summary" role="status"></div><div id="contactList"></div><div class="event-pagination"><button id="contactsPrevious" class="secondary compact" type="button">← Anterior</button><span id="contactPageLabel"></span><button id="contactsNext" class="secondary compact" type="button">Próxima →</button></div></article></section>
+        <section id="eventsView" class="view">
+          <div class="page-heading"><div><span class="eyebrow">HISTÓRICO DA AUTOMAÇÃO</span><h1>Eventos</h1><p>Encontre o que aconteceu em cada publicação e campanha.</p></div><button id="refreshEvents" class="secondary" type="button">↻ Atualizar</button></div>
+          <article class="panel">
+            <div class="events-intro"><div><h2>Histórico de atividades</h2><p>Histórico real da automação, exibido em páginas de 15 eventos.</p></div></div>
+            <form id="eventFilters" class="event-filters">
+              <label>Publicação<select id="eventPublication"><option value="">Todas as publicações</option></select></label>
+              <label>Campanha<select id="eventCampaign"><option value="">Todas as campanhas</option></select></label>
+              <label>Tipo de evento<select id="eventType"><option value="">Todos os tipos</option><option value="private_reply">Primeira DM</option><option value="comment_reply">Resposta pública</option><option value="ask_follow">Pedido para seguir</option><option value="deliver">Entrega do conteúdo</option><option value="profile_check">Verificação do perfil</option></select></label>
+              <label>Resultado<select id="eventStatus"><option value="">Todos os resultados</option><option value="sent">Enviado</option><option value="failed">Falha</option><option value="checked">Verificado</option></select></label>
+              <label>Período<select id="eventPeriod"><option value="">Todo o período</option><option value="1">Últimas 24 horas</option><option value="7">Últimos 7 dias</option><option value="30">Últimos 30 dias</option></select></label>
+              <label>Buscar perfil ou campanha<input id="eventSearch" type="search" placeholder="Ex.: perfil ou nome da campanha" maxlength="120"></label>
+              <button id="clearEventFilters" class="secondary compact" type="button">Limpar filtros</button>
+            </form>
+            <div class="events-summary"><span id="eventResultCount" role="status" aria-live="polite"></span><span>Mais recentes primeiro</span></div>
+            <div id="eventHistory" class="event-history" tabindex="0" role="region" aria-label="Histórico de eventos"></div>
+            <div class="event-pagination"><button id="eventsPrevious" class="secondary compact" type="button">← Anterior</button><span id="eventPageLabel" aria-live="polite"></span><button id="eventsNext" class="secondary compact" type="button">Próxima →</button></div>
+          </article>
+        </section>
+
         <section id="campaignsView" class="view">
-          <div class="page-heading"><div><span class="eyebrow">AUTOMAÇÕES</span><h1>Campanhas</h1><p>Uma palavra-chave, uma conversa e uma entrega bem definida.</p></div><button id="newCampaign" class="primary">+ Criar campanha</button></div>
+          <div class="page-heading"><div><span class="eyebrow">AUTOMAÇÕES</span><h1>Campanhas</h1><p>Suas publicações, automações e resultados em um só lugar.</p></div><button id="newCampaign" class="primary">+ Criar campanha</button></div>
           <div id="campaignList" class="campaign-list"></div>
         </section>
 
@@ -125,13 +150,14 @@
       <label>Primeira mensagem<textarea id="campaignFirst" required rows="3" placeholder="Oi! Responda QUERO para receber..."></textarea></label>
       <label>Mensagem para pedir follow<textarea id="campaignFollow" rows="3" placeholder="Siga o perfil e responda PRONTO..."></textarea></label>
       <label>Mensagem de entrega<textarea id="campaignDelivery" required rows="2" placeholder="Aqui está o conteúdo prometido:"></textarea></label>
-      <label>Link de entrega<input id="campaignUrl" required type="url" placeholder="https://..."></label>
+      <div class="delivery-section"><div class="delivery-heading"><span class="eyebrow">CONTEÚDO DA ENTREGA</span><h3>O que a pessoa vai receber?</h3><p>O comentário inicia a conversa. A entrega acontece na DM.</p></div><label>Forma de entrega<select id="deliveryMode"><option value="link">Link</option><option value="file">Arquivo</option><option value="both">Link + arquivo</option></select></label><label id="deliveryUrlField">Link de entrega<input id="campaignUrl" required type="url" placeholder="https://..."></label><div id="deliveryFileField" class="hidden"><label class="file-drop" for="deliveryFile"><span>↑</span><strong>Selecionar arquivo</strong><small>PDF, DOCX, planilhas, ZIP e outros · até 25 MB</small></label><input id="deliveryFile" type="file" class="file-native"><div id="fileSelection" class="file-selection hidden"><div><strong id="fileName"></strong><small id="fileSize"></small></div><button id="removeDeliveryFile" class="secondary compact" type="button">Remover</button></div><p class="local-file-note">O arquivo será hospedado no seu armazenamento FILES e entregue por um link de download na DM. Quem tiver o link poderá baixá-lo.</p></div></div><label>Etiquetas ao concluir a entrega<input id="campaignTags" placeholder="Ex.: recebeu guia, interessado"><small>Separe por vírgulas. São aplicadas quando a entrega real é registrada.</small></label>
       <div class="form-grid"><label class="switch-row"><span><strong>Exigir follow</strong><small>Antes de entregar</small></span><input id="campaignFollowRequired" type="checkbox" checked><i></i></label><label>Status<select id="campaignStatus"><option value="active">Ativa</option><option value="paused">Pausada</option></select></label></div>
       <p id="campaignError" class="form-error"></p>
       <div class="dialog-actions"><button id="deleteCampaign" class="danger-button hidden" type="button">Excluir campanha</button><span class="dialog-actions-main"><button id="cancelCampaign" class="secondary" type="button">Cancelar</button><button id="saveCampaign" class="primary" type="submit">Salvar campanha</button></span></div>
     </form>
   </dialog>
-  <div id="toast" role="status"></div>
+  <dialog id="resultsDialog" aria-labelledby="resultsTitle"><div class="results-content"><div class="dialog-head"><div><span class="eyebrow">RESULTADOS POR CAMPANHA</span><h2 id="resultsTitle"></h2></div><button id="closeResults" class="icon-button" type="button" aria-label="Fechar resultados">×</button></div><p id="resultsSummary" class="results-note"></p><div class="results-top"><div><small>CONCLUSÃO DO FLUXO</small><strong id="resultsConversion"></strong><p>Entregas ÷ entradas</p></div><div><small>FALHAS DE ENVIO</small><strong id="resultsFailures"></strong><p>Registros para investigar</p></div></div><h3 class="funnel-title">Onde as pessoas avançam</h3><div id="resultsFunnel"></div><p class="results-note">Conclusão indica entrega do conteúdo. Cliques e vendas precisam de rastreamento próprio.</p></div></dialog>
+  <dialog id="contactDialog" aria-labelledby="contactTitle"><form id="contactTagForm" class="results-content"><div class="dialog-head"><div><span class="eyebrow">ETIQUETAS DO CONTATO</span><h2 id="contactTitle"></h2></div><button id="closeContact" class="icon-button" type="button" aria-label="Fechar contato">×</button></div><input id="contactId" type="hidden"><label class="tag-editor">Etiquetas<input id="contactTags" placeholder="recebeu guia, interessado" maxlength="600"><small>Separe por vírgulas. Apague uma etiqueta para removê-la.</small></label><div class="dialog-actions"><button class="primary" type="submit">Salvar etiquetas</button></div></form></dialog><div id="toast" role="status"></div>
   <script type="module" src="/app.js"></script>
 </body>
 </html>

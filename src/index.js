@@ -1,3 +1,4 @@
+import { capabilities, contacts, decorateCampaigns, downloadFile, events, optionsStatement, prepareDelivery, saveLabels, uploadFile } from './lib/dashboard.js';
 import { canContinueCommentConversation, eventIdFor, isInstagramCommentReply, isInstagramStoryMessage, isOwnInstagramComment, matchesCommentCampaign, nextStep, parseInstagramEvents } from './lib/automation.js';
 import { createSession, validSession, verifyMetaSignature } from './lib/security.js';
 import { getProfile, listMedia, sendCommentReply, sendMessage, sendPrivateReply } from './meta.js';
@@ -91,10 +92,10 @@ async function overview(env) {
     env.DB.prepare('SELECT COUNT(*) count FROM contacts'),
     env.DB.prepare("SELECT COUNT(*) count FROM conversations WHERE stage = 'delivered'"),
     env.DB.prepare(`SELECT i.id, i.event_type, i.direction, i.status, i.detail, i.created_at,
-      c.name campaign_name, ct.username FROM interactions i
+      c.name campaign_name, c.media_id publication_id, ct.username FROM interactions i
       LEFT JOIN campaigns c ON c.id = i.campaign_id
       LEFT JOIN contacts ct ON ct.igsid = i.igsid
-      ORDER BY i.id DESC LIMIT 10`)
+      ORDER BY i.id DESC LIMIT 15`)
   ]);
   const recentInteractions = interactions.results || [];
   const hasSuccessfulMetaActivity = recentInteractions.some((item) =>
@@ -119,7 +120,7 @@ async function listCampaigns(env) {
     (SELECT COUNT(*) FROM conversations v WHERE v.campaign_id = c.id) leads,
     (SELECT COUNT(*) FROM conversations v WHERE v.campaign_id = c.id AND v.stage = 'delivered') delivered
     FROM campaigns c ORDER BY c.id DESC`).all();
-  return json({ campaigns: result.results || [] });
+  return json({ campaigns: await decorateCampaigns(env, result.results || []) });
 }
 
 function cleanCampaign(body) {
@@ -147,23 +148,30 @@ function validateCampaign(campaign) {
 }
 
 async function saveCampaign(request, env, id) {
-  const campaign = cleanCampaign(await request.json().catch(() => ({})));
-  const validation = validateCampaign(campaign);
+  const body=await request.json().catch(()=>({}));
+  const delivery=await prepareDelivery(request,env,body);
+  if(delivery.error)return json({error:delivery.error},delivery.status);
+  const campaign = cleanCampaign({...body,delivery_url:delivery.url});
+  const validation = validateCampaign({...campaign,deliveryUrl:delivery.file?.url||delivery.link});
   if (validation) return json({ error: validation }, 422);
 
   try {
+    if(id && !await env.DB.prepare('SELECT id FROM campaigns WHERE id=?').bind(id).first())return json({error:'Campanha não encontrada.'},404);
+    let statement;
     if (id) {
-      await env.DB.prepare(`UPDATE campaigns SET name=?, keyword=?, media_id=?, public_reply=?, first_message=?, follow_message=?,
+      statement=env.DB.prepare(`UPDATE campaigns SET name=?, keyword=?, media_id=?, public_reply=?, first_message=?, follow_message=?,
         delivery_message=?, delivery_url=?, match_all_comments=?, follow_required=?, status=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`)
         .bind(campaign.name, campaign.keyword, campaign.mediaId, campaign.publicReply, campaign.firstMessage, campaign.followMessage,
-          campaign.deliveryMessage, campaign.deliveryUrl, campaign.matchAllComments, campaign.followRequired, campaign.status, id).run();
+          campaign.deliveryMessage, campaign.deliveryUrl, campaign.matchAllComments, campaign.followRequired, campaign.status, id);
     } else {
-      await env.DB.prepare(`INSERT INTO campaigns
+      statement=env.DB.prepare(`INSERT INTO campaigns
         (name, keyword, media_id, public_reply, first_message, follow_message, delivery_message, delivery_url, match_all_comments, follow_required, status)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
         .bind(campaign.name, campaign.keyword, campaign.mediaId, campaign.publicReply, campaign.firstMessage, campaign.followMessage,
-          campaign.deliveryMessage, campaign.deliveryUrl, campaign.matchAllComments, campaign.followRequired, campaign.status).run();
+          campaign.deliveryMessage, campaign.deliveryUrl, campaign.matchAllComments, campaign.followRequired, campaign.status);
     }
+    if(delivery.ready)await env.DB.batch([statement,optionsStatement(env,delivery,campaign,id)]);
+    else await statement.run();
     return json({ ok: true });
   } catch (error) {
     return json({ error: String(error.message).includes('UNIQUE') ? 'Já existe uma campanha com essa palavra-chave para essa publicação.' : 'Não foi possível salvar a campanha.' }, 409);
@@ -369,6 +377,8 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
+    const fileMatch=path.match(/^\/files\/([a-f0-9-]{36})$/i);
+    if(fileMatch && ['GET','HEAD'].includes(request.method))return downloadFile(request,env,fileMatch[1]);
     const publicPage = legalPage(path, request.method);
     if (publicPage) return publicPage;
 
@@ -386,6 +396,12 @@ export default {
     if (path.startsWith('/api/')) {
       const denied = await requireAdmin(request, env);
       if (denied) return denied;
+      if(path==='/api/capabilities' && request.method==='GET')return capabilities(env);
+      if(path==='/api/events' && request.method==='POST')return events(request,env);
+      if(path==='/api/contacts' && request.method==='GET')return contacts(request,env);
+      const contactMatch=path.match(/^\/api\/contacts\/([^/]+)\/tags$/);
+      if(contactMatch && request.method==='PUT')return saveLabels(request,env,decodeURIComponent(contactMatch[1]));
+      if(path==='/api/files' && request.method==='POST')return uploadFile(request,env);
       if (path === '/api/overview' && request.method === 'GET') return overview(env);
       if (path === '/api/media' && request.method === 'GET') {
         try {
