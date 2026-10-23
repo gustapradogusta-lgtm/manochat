@@ -1,150 +1,152 @@
-# ManoChat Studio — atualização revisada de 23/10/2026
+# ManoChat — Stories e encerramento após a entrega
 
-## Novidade desta revisão: primeira chamada e mensagens prontas
+Esta versão inclui as capas 9:16, entrega por botão sem endereço repetido, página de documentos e as novas campanhas de Story.
 
-O token expirado foi identificado nos registros da conta; a troca feita na Cloudflare restabeleceu os envios, segundo seu teste. Este pacote NÃO contém esse token e NÃO substitui nenhum secret. O erro de expiração não demonstrava uma falha dos botões. A aceitação dos botões na primeira private reply ainda precisa ser testada na conta real.
+## O que foi ajustado na conversa
 
-Esta revisão melhora os textos para campanhas novas e adiciona “Aplicar mensagens prontas” na aba Conversa. Em campanhas existentes, esse botão modifica apenas o rascunho; existe “Desfazer” e só salvar aplica as mudanças. Palavras-chave, publicação, status, links e arquivos são preservados ao aplicar o modelo.
+- Somente um novo comentário válido ou uma nova resposta ao Story configurado inicia um fluxo.
+- Enquanto o fluxo está aberto, a pessoa pode responder ou usar os botões para receber o conteúdo.
+- Depois da entrega, a automação encerra. “Obrigado”, “quero”, mensagens comuns e botões antigos não provocam novo envio.
+- Uma entrega com erro de resposta da Meta também não é repetida automaticamente. Em caso de dúvida, confira os registros e use uma nova entrada de teste.
+- Há uma proteção independente de encerramento: se uma gravação secundária falhar depois do envio, uma nova DM não deve repetir a entrega.
+- Campanhas pausadas, sessões encerradas ou expiradas não continuam. Uma sessão tem duração máxima de 24 horas; um novo comentário ou uma nova resposta ao Story inicia outra.
+- Menções, compartilhamentos de Story e mensagens comuns não criam campanhas. O gatilho implementado é uma resposta com texto ao seu Story.
 
-Para habilitar a primeira chamada com botão:
-1. A versão nova de src/ e public/ precisa estar implantada. Se você reverteu para a versão antiga durante o diagnóstico, ela ainda não tem este editor de botões. Envie esta revisão pelo processo de atualização descrito abaixo, mantendo o token novo na Cloudflare.
-2. Confira que a migração 0005 foi aplicada ao mesmo banco D1 usado pelo Worker. Não precisa aplicá-la novamente se as duas tabelas já existem.
-3. No app Meta existente, preserve os campos assinados e inclua messaging_postbacks para processar os cliques, tanto no app quanto na assinatura da conta quando houver lista explícita de campos.
-4. Na Cloudflare → Worker manochat → Configurações → Variáveis e segredos → Produção, adicione uma VARIÁVEL de texto com nome META_PRIVATE_REPLY_BUTTONS_ENABLED e valor true (tudo minúsculo). Essa é uma opção nova, não um token. Não substitua META_ACCESS_TOKEN nem qualquer outro secret. Aplique a alteração em produção.
-5. Recarregue o ManoChat, abra uma campanha de teste e, na aba Conversa, clique “Aplicar mensagens prontas”. Confira o botão RECEBER CONTEÚDO na primeira mensagem com ação Continuar conversa. Revise o restante e salve.
-6. Teste com um comentário novo feito por outra conta em uma publicação isolada. O clique continua a conversa; se a campanha exigir follow, ele continua sendo conferido antes da entrega. Teste contas que seguem e que não seguem o perfil.
-7. Se a Meta rejeitar o template da primeira DM, volte a variável para false e use um comentário novo para testar o envio por texto. Não repita a tentativa no comentário que falhou. Mantenha campanhas principais por texto até confirmar esse teste.
+## Primeiro: atualizar o banco, pelo navegador
 
-Mensagens recomendadas quando a primeira chamada estiver habilitada:
-- Comentário: Te chamei no Direct com o próximo passo 🙌 Dá uma olhada por lá!
-- Primeira DM: Seu conteúdo está quase na sua mão! 🙌 / Toque no botão abaixo para continuar e receber o que prometi.
-- Botão: RECEBER CONTEÚDO → Continuar conversa.
-- Pedido de follow: Falta só um passo para liberar seu conteúdo 💚 / Siga meu perfil e depois toque em JÁ TE SEGUI para eu conferir.
-- Botão de follow: JÁ TE SEGUI ✅ → Continuar conversa.
-- Entrega: Pronto! Seu conteúdo está liberado 🎉 / Acesse pelo botão abaixo e aproveite!
-- Botão de entrega: ACESSAR CONTEÚDO, ou BAIXAR CONTEÚDO no modelo de arquivo. Se mudar a forma de entrega depois de aplicar o modelo, revise a ação do botão da entrega para corresponder ao material selecionado.
+Não basta subir os arquivos nesta revisão. Aplique a atualização 0006 antes do deploy do código. Não altere seu token, seus secrets ou as conexões que já funcionam.
 
-Sem a ativação da primeira DM, o modelo instrui a pessoa a responder EU QUERO e não apresenta um botão que ainda não seria enviado.
+1. Guarde o backup do código atual e um backup/exportação do banco D1.
+2. Entre na Cloudflare, na mesma conta do Worker ManoChat.
+3. Abra **Storage & databases → D1** (ou localize D1 pelo menu da conta).
+4. Abra o banco que já está vinculado como **DB** no seu Worker. No seu projeto, ele foi identificado como **manochat-db**. Não crie outro banco.
+5. Abra a aba **Console**.
+6. Execute os quatro blocos abaixo, um por vez. Cada bloco deve terminar com uma mensagem de sucesso antes de você passar ao próximo. Se algum falhar, pare nessa etapa e envie apenas o erro, sem tokens.
 
+Os blocos criam tabelas auxiliares e preservam campanhas e contatos. Podem ser executados novamente sem apagar os registros existentes. Eles também conservam como encerradas as conversas já entregues.
 
-Este é um pacote de ATUALIZAÇÃO, não uma instalação do zero. Foi preparado a partir do ZIP ManoChat-Atualizacao-GitHub.zip entregue em 10/10/2026. Se você alterou o projeto depois disso, compare essas alterações antes de substituir arquivos. Nada foi publicado no GitHub, na Cloudflare ou na Meta durante esta preparação.
-
-## O que está pronto
-
-- Editor por etapas: Gatilho, Conversa e Entrega, com prévia ilustrativa da DM.
-- De zero a três botões por mensagem, independentes em cada campanha. Texto de até 20 caracteres por botão.
-- Pedido de follow: continuar a conversa ou abrir um endereço. Exemplo: “Já te segui ✅” e “Me seguir”.
-- Entrega: abrir o link configurado, baixar o arquivo configurado ou abrir outro endereço.
-- Primeira mensagem: suporte preparado, protegido por ativação separada; continua em texto por padrão. Leia a observação ao final.
-- Visual clean/dark, novas escolhas com busca pela letra inicial e navegação por teclado, campos maiores, cartões responsivos e editor mobile em tela cheia.
-- Proteção contra eventos repetidos, cliques simultâneos, botões removidos e botões de uma conversa anterior.
-
-Campanhas existentes continuam sem botões até você adicioná-los. O código continua aceitando respostas digitadas. Abrir um link NÃO confirma follow nem avança automaticamente a conversa. O botão “Continuar conversa” consulta o perfil pela Meta antes de decidir a entrega.
-
-## 1. Faça o backup antes da troca
-
-1. No seu repositório GitHub, baixe o ZIP da versão atualmente funcionando. Guarde-o separado deste pacote.
-2. Registre qual é o último commit funcionando, para conseguir voltar a ele.
-3. Na Cloudflare, confira qual banco D1 está ligado ao Worker pelo binding `DB`. Guarde um backup/exportação do banco ou o ponto de recuperação disponível no seu plano.
-4. Não envie tokens, senhas ou secrets pelo chat e não os coloque no GitHub.
-
-Não há tokens reais, banco de contatos ou exportação de dados dentro deste pacote. O código mantém a marca ManoChat e as páginas institucionais que já existiam; ele não é a edição genérica para distribuição a outras pessoas.
-
-## 2. Atualize apenas a estrutura nova do banco
-
-Na Cloudflare, abra o banco D1 JÁ USADO pelo seu Worker e vá ao console de SQL. Abra `migrations/0005_campaign_buttons.sql` deste pacote, copie todo o conteúdo e execute no mesmo banco. São duas instruções CREATE TABLE IF NOT EXISTS. Se o console aceitar uma por vez, execute as duas, na ordem.
-
-Esta migração cria `campaign_buttons` e `conversation_locks`. Não apaga, renomeia ou recria campanhas e contatos. Pode ser executada novamente. Não execute as migrações antigas de novo e não use DROP TABLE.
-
-Para conferir no console:
+### Bloco 1 de 4
 
 ```sql
-SELECT name FROM sqlite_master
-WHERE type='table' AND name IN ('campaign_buttons','conversation_locks');
+-- Additive and repeatable: existing campaigns and credentials are preserved.
+CREATE TABLE IF NOT EXISTS campaign_triggers (
+ campaign_id INTEGER PRIMARY KEY REFERENCES campaigns(id) ON DELETE CASCADE,
+ trigger_type TEXT NOT NULL DEFAULT 'comment' CHECK(trigger_type IN ('comment','story')),
+ story_id TEXT,
+ story_link_id TEXT,
+ story_link TEXT,
+ story_username TEXT
+);
 ```
 
-Devem aparecer as duas tabelas. A atualização 0004, que você já usou para arquivos e etiquetas, continua sendo necessária para essas funções.
+### Bloco 2 de 4
 
-Se você usa migrações via Wrangler, a alternativa ao console é `npx wrangler d1 migrations apply NOME_DO_BANCO --remote`, usando o nome existente e conferindo antes a lista de migrações pendentes. Não aplique ambos os métodos sem conferir o histórico; se não usa terminal, prefira o console descrito acima.
+```sql
+CREATE TABLE IF NOT EXISTS automation_sessions (
+ igsid TEXT PRIMARY KEY REFERENCES contacts(igsid) ON DELETE CASCADE,
+ source_type TEXT NOT NULL CHECK(source_type IN ('comment','story')),
+ source_id TEXT NOT NULL,
+ state TEXT NOT NULL DEFAULT 'active' CHECK(state IN ('active','sending','delivered','failed','closed')),
+ source_event_at INTEGER NOT NULL DEFAULT 0,
+ started_at INTEGER NOT NULL,
+ expires_at INTEGER NOT NULL
+);
+```
 
-## 3. Copie os arquivos para o projeto existente
+### Bloco 3 de 4
 
-Descompacte o ZIP. O conteúdo já está organizado para a raiz do repositório:
+```sql
+CREATE TABLE IF NOT EXISTS conversation_locks (
+ igsid TEXT PRIMARY KEY,
+ owner TEXT NOT NULL,
+ expires_at INTEGER NOT NULL
+);
+```
 
-- `src/`: substitua os arquivos existentes e adicione `src/lib/buttons.js`.
-- `public/`: substitua os arquivos existentes e adicione os novos `studio.css`, `ui.js` e `button-editor.js`.
-- `migrations/`: adicione somente `0005_campaign_buttons.sql`, mantendo as anteriores.
-- `tests/` e arquivos VERIFY: atualização dos testes e do registro de integridade.
-- Este guia, `COMECE-AQUI.html`, `VALIDACAO.md` e `revisao/`: documentação e imagens; podem ficar na raiz, fora de public.
+### Bloco 4 de 4
 
-NÃO substitua seu `wrangler.toml`, `package.json` ou `package-lock.json`. Eles não foram incluídos neste ZIP, justamente para preservar os nomes, IDs, dependências e a configuração do seu projeto. Não exclua arquivos antigos do repositório. Não coloque uma pasta extra envolvendo src e public.
+```sql
+INSERT OR IGNORE INTO automation_sessions(igsid,source_type,source_id,state,source_event_at,started_at,expires_at)
+ SELECT igsid,'comment',source_comment_id,CASE WHEN stage='delivered' THEN 'delivered' ELSE 'active' END,0,
+ CAST(strftime('%s','now') AS INTEGER)*1000,CAST(strftime('%s','now') AS INTEGER)*1000+86400000
+ FROM conversations WHERE source_comment_id IS NOT NULL;
+```
 
-Pelo GitHub no navegador, a maneira de preservar as pastas é abrir o repositório, usar github.dev (tecla ponto), arrastar as pastas do pacote para a raiz no explorador do editor, aceitar a substituição dos arquivos correspondentes e conferir as alterações antes do commit. Se aparecer uma pasta única “ManoChat-Studio-Botoes-Mobile”, você arrastou a pasta externa: use seu conteúdo. Na área de controle de versão, registre o commit com a mensagem `Atualiza editor, botões e mobile`. No GitHub normal, o envio de pastas também pode ser feito por Add file → Upload files; confira a hierarquia antes de confirmar.
+## Depois: subir o código no GitHub
 
-Mantenha o mesmo Worker, banco, bucket e endereço de webhook. Não precisa criar outro app da Meta nem refazer o login do Instagram.
+1. Descompacte o ZIP.
+2. Abra a raiz do seu repositório no GitHub, onde já existem `src` e `public`.
+3. Clique em **Add file → Upload files**.
+4. Envie as pastas e os arquivos DESCOMPACTADOS. Não envie o ZIP inteiro nem uma pasta externa envolvendo o projeto.
+5. Confira os caminhos `src/index.js`, `src/lib/story-campaigns.js`, `src/lib/automation-sessions.js`, `public/app.js` e `migrations/0006_stories_sessions.sql`.
+6. Salve com o nome `Adicionar Stories e encerrar apos entrega`.
+7. Aguarde o deploy da Cloudflare concluir. Se seu projeto não publica automaticamente, use o mesmo procedimento de deploy que já vinha usando.
+8. Recarregue o painel com Ctrl + Shift + R. No celular, feche a aba e abra novamente.
 
-## 4. Publique pelo processo que você já usa
+A migração 0005 incluída continua sendo a dos botões que você já usa. Para esta revisão, execute os quatro blocos da 0006 acima. Os arquivos `wrangler.toml`, `package.json` e `package-lock.json` não estão no ZIP: mantenha os seus.
 
-Se seu Worker já está ligado ao repositório e publica a cada commit, aguarde a implantação concluir na Cloudflare. Se a publicação é manual, use o mesmo processo de antes. Não crie outro Worker. Confira o resultado da implantação e abra seu endereço atual.
+## Preservar o botão da primeira DM
 
-Atualize a página sem cache se ainda aparecer a interface antiga. Faça login com a mesma senha. Em Campanhas, abra uma campanha e confira as três abas.
+Mantenha a variável `META_PRIVATE_REPLY_BUTTONS_ENABLED` com o valor exato `true`, que você já habilitou. Se a Cloudflare avisar que essa configuração será sobrescrita no próximo deploy, mantenha esta linha dentro do bloco `[vars]` do SEU `wrangler.toml`:
 
-Se a mensagem “aplique a migração 0005” continuar aparecendo, confira se as duas tabelas foram criadas no banco ligado ao binding DB do Worker, não em outro banco ou ambiente.
+```toml
+META_PRIVATE_REPLY_BUTTONS_ENABLED = "true"
+```
 
-## 5. Habilite os eventos de clique no app existente
+Não crie dois blocos `[vars]`. Não substitua o arquivo inteiro por um exemplo e não coloque o token nele. Conserve nome do Worker, ID do banco, bindings e demais configurações atuais. A atualização não inclui nenhum token real.
 
-Para botões do tipo “Continuar conversa”, a Meta precisa enviar o evento `messaging_postbacks` ao MESMO webhook que já recebe comentários e mensagens.
+## Criar uma campanha por Story
 
-1. Abra o app Meta que você já configurou.
-2. Na configuração dos campos de webhook do Instagram, localize `messaging_postbacks` e adicione sua assinatura.
-3. Preserve `comments`, `messages` e quaisquer outros campos já assinados. Não troque o callback, verify token, access token, app secret ou versão da API.
-4. Confira também a assinatura da conta profissional ao aplicativo. Se ela foi criada com uma lista explícita de `subscribed_fields`, a lista deve incluir `messaging_postbacks` E todos os campos existentes. Alterar só a lista do painel do app pode não atualizar uma assinatura de conta feita pela API.
-5. Se essa opção não aparecer, ou a Meta pedir permissões diferentes, não refaça sua conexão. Mantenha as campanhas por texto e traga o nome da tela/erro, sem tokens, para analisar o seu caminho de integração.
+1. Publique o Story normalmente no Instagram, no perfil conectado ao ManoChat. Esta atualização não publica Stories automaticamente.
+2. Abra o Story e use **Compartilhar → Copiar link** (o nome do botão pode variar conforme o aplicativo).
+3. No ManoChat, abra **Campanhas → Criar campanha**.
+4. Em **Iniciar campanha por**, escolha **Resposta a Story**.
+5. Dê um nome à campanha.
+6. Defina palavras-chave, como `GUIA`, ou ative **Qualquer resposta ao Story**. Esse modo considera respostas com texto, incluindo emojis, recebidas com a identificação do Story.
+7. Cole o link completo no campo **Link do Story**. Exemplo de formato: `https://www.instagram.com/stories/seuperfil/123456789/`.
+8. Você pode clicar em **Conferir Story** para validar. A validação também acontece ao salvar um link novo: é necessário encontrar o Story ativo na conta conectada.
+9. Configure as mensagens e botões na aba **Conversa**. Se quiser aplicar os modelos prontos, use **Aplicar mensagens prontas**, revise e salve.
+10. Configure o material e o botão na aba **Entrega**. Salve a campanha com o status **Ativa**.
 
-Este pacote não executa nenhuma alteração de assinatura na Meta. Abrir um link é uma ação diferente de postback e não gera confirmação de follow por si só.
+Para cadastrar uma campanha de Story, além das mensagens e do material, basta colar o link: não é necessário procurar o ID manualmente. A ferramenta guarda separadamente o ID da API e o número presente no link. Links de destaque, links encurtados, Stories de outra conta e Stories expirados não são aceitos como uma nova configuração.
 
-## 6. Configure uma campanha de teste
+Quando o Story sair do ar, publique outro Story e troque o link da campanha. Se a consulta da Meta não permitir localizar o Story, o painel apresenta o erro e não ativa um gatilho genérico para qualquer mensagem.
 
-1. Duplique uma campanha e deixe a cópia pausada enquanto edita.
-2. Use uma palavra exclusiva (por exemplo TESTEBOTAO) e uma publicação de teste. Evite sobrepor campanhas ativas para a mesma publicação/palavra.
-3. Em Conversa, mantenha a primeira DM por texto: “Responda QUERO aqui para receber”.
-4. Na mensagem de pedido de follow, adicione dois botões:
-   - Texto: “Já te segui ✅”. Ação: Continuar conversa.
-   - Texto: “Me seguir”. Ação: Abrir um link. Endereço: o link completo do seu perfil Instagram.
-5. Em Entrega, mantenha seu link/arquivo e adicione um botão “Acessar conteúdo” com a ação correspondente.
-6. Com botões, a mensagem inteira deve ter no máximo 640 caracteres. Na entrega, os links escritos no final também entram nesse limite. O sistema valida antes de salvar; evite links excessivamente longos.
-7. Salve, ative só a campanha de teste e use outra conta do Instagram para comentar.
-8. Confira a primeira DM. Responda QUERO para continuar. Sem seguir, toque em “Já te segui”: a entrega deve continuar bloqueada. Siga o perfil e toque novamente. A atualização de follow pode levar algum tempo na Meta.
-9. Confira o conteúdo e o botão de entrega. Toque novamente: uma conversa já entregue não deve reenviar o material.
-10. Abra Eventos e filtre pela campanha. Confira registros de entrega ou falha. Só depois repita a configuração nas campanhas principais.
+As respostas de Stories são recebidas pelo webhook de mensagens. O sistema já utiliza mensagens para o seu fluxo atual, mas é necessário testar um Story real nessa conta. Não é necessário trocar o token preventivamente nem refazer toda a integração. Se não chegar o evento, confira o webhook e os acessos atuais antes de mudar configurações.
 
-“Ver resultados” continua mostrando etapas de entrega, não rastreamento de cliques em links, vendas ou garantia de leitura. Esta atualização não cria métricas de vendas.
+## Teste obrigatório após o deploy
 
-## 7. Se algo não sair como esperado
+1. Faça um comentário NOVO em uma campanha antiga e percorra o fluxo até receber o material.
+2. Depois da entrega, envie “obrigado” e depois “quero” por DM. O ManoChat não deve responder a essas duas mensagens.
+3. Tente um botão antigo de continuar, se ainda aparecer no histórico. Ele não deve repetir a entrega.
+4. Faça um novo comentário válido: agora uma nova entrada pode iniciar o fluxo.
+5. Por outra conta, responda ao Story cadastrado com a palavra-chave. Você deve receber a primeira mensagem no Direct, sem resposta pública no post.
+6. Termine a entrega do Story e envie outra DM comum. A automação deve permanecer encerrada.
+7. Responda novamente ao Story: essa nova resposta é uma nova entrada permitida.
+8. Confira que Story diferente, menção em Story e DM solta não iniciam a campanha.
 
-- Não chegam cliques: confira `messaging_postbacks` tanto no app quanto na assinatura da conta. Uma resposta digitada continua sendo uma alternativa.
-- Erro de mensagem com botões: reduza o texto, confirme até três botões e destinos válidos. Veja o erro em Eventos. O sistema não reenvia automaticamente outra primeira DM, para evitar duplicação e consumo da resposta privada permitida.
-- Quer voltar para texto: remova os botões daquela mensagem e salve. Não precisa apagar a campanha ou mexer em tokens.
-- Quer reverter toda a interface: volte ao commit/ZIP anterior e publique pelo mesmo processo. As duas tabelas adicionais podem permanecer no banco; a versão anterior as ignora. Não apague o banco e não restaure um backup de dados só para desfazer o visual.
-- Se outros arquivos mudaram depois de 10/10, compare o código antes de aplicar este pacote. Não há como afirmar compatibilidade com alterações que não recebemos.
+Se houver erro, restaure o commit anterior e confira os registros da Cloudflare. As novas tabelas podem permanecer; o código anterior não depende delas. Não apague o banco nem remova tabelas para desfazer a atualização.
 
-## Primeira DM com botões: ativação avançada, separada
+## Capas e materiais
 
-A documentação oficial confirma templates com até três botões na API de mensagens. A página de private replies apresenta a primeira resposta ao comentário por texto, sem confirmar claramente essa combinação de template + comment_id. Por isso a primeira DM permanece por texto por padrão.
+As capas são menores, em proporção 9:16 e com cantos arredondados. A consulta por ID busca um endereço atualizado; se a imagem não estiver disponível, o painel mostra uma indicação em vez de um ícone quebrado. Um Story expirado pode deixar de fornecer capa.
 
-Foi preparado o envio opcional de template na primeira DM por meio da variável de ambiente `META_PRIVATE_REPLY_BUTTONS_ENABLED=true`. Sem esse valor EXATO, o editor desabilita adicionar botões nessa etapa e o backend envia o texto original mesmo que haja uma configuração antiga de botões. Essa variável é nova e opcional; nenhum secret existente muda.
+A entrega não repete o endereço quando um botão já abre aquele mesmo conteúdo. Se você escreveu um link manualmente dentro da Mensagem de entrega, retire esse trecho do texto. O endereço permanece no campo Link de entrega.
 
-Não ative na campanha principal antes de verificar a aceitação pela Meta em uma publicação isolada e com contas que seguem e que não seguem o perfil. Não foi possível executar esse teste real aqui. Uma tentativa de private reply pode consumir a resposta permitida ao comentário; se falhar, não tente repetir nesse mesmo comentário. Use outro comentário de teste. Voltar a variável para false restaura a primeira DM por texto, mantendo os demais botões.
+Em Link + arquivo, configure um botão para o link e outro para o arquivo. Se algum material não tiver botão correspondente, seu endereço continua no texto para não deixar o destinatário sem acesso.
 
-## Validação e próxima etapa
+Um link de visualização do Drive abre o próprio Drive. Configure o compartilhamento no Drive; a ferramenta não muda as permissões nem envia arquivos automaticamente para ele.
 
-37 testes automatizados passaram. O fluxo sem botões, arquivos, etiquetas, migração, autenticação do painel, assinatura do webhook, deduplicação e botões foram exercitados localmente. O visual foi revisado no navegador em desktop e em um viewport de 390 × 844 pixels, nos temas clean e dark. Arquivos de código novos passaram pela checagem de sintaxe.
+Arquivos enviados pela ferramenta precisam do armazenamento R2 com binding `FILES`, além das tabelas já existentes. Esta revisão não cria esse armazenamento na sua conta. Sem ele, use um link do Drive.
 
-Não houve teste real de envio na Meta, implantação em produção ou execução de migração no seu banco. Esse pacote não adiciona login Google nem a edição genérica para clientes; esses itens continuam como próximas etapas, depois desta atualização validada na sua conta.
+Botões de arquivo abrem uma página com nome, tamanho e opção de baixar. PDFs têm prévia quando o navegador permite; no navegador interno do Instagram pode ser necessário baixar ou abrir no navegador externo. Word, ZIP e outros formatos são baixados e abertos no aplicativo compatível. Quem tiver o link pode acessar o material; não use para documentos privados.
 
-Referências oficiais consultadas em 23/10/2026:
-- https://developers.facebook.com/documentation/instagram-platform/instagram-api-with-instagram-login/messaging-api/button-template
-- https://developers.facebook.com/documentation/instagram-platform/private-replies
-- https://developers.facebook.com/documentation/instagram-platform/webhooks/fields
-- https://developers.cloudflare.com/d1/best-practices/import-export-data/
-- https://developers.cloudflare.com/d1/reference/time-travel/
+## O que foi conferido
+
+57 testes automatizados passaram. Cobrem fluxo anterior, encerramento, mensagens após entrega, botões antigos, eventos repetidos, sessões expiradas, campanha pausada, erros de envio/gravação, validação de link de Story, separação de gatilhos, arquivos e consulta de capas. Cadastro e salvamento de Story conferidos no navegador com dados fictícios, inclusive editor de 390 pixels sem transbordamento horizontal.
+
+Os métodos existentes de envio e a autenticação da Meta foram comparados e preservados. Adicionamos a consulta de Stories em um método separado. Segurança de sessão e assinatura do webhook preservadas. Nenhum acesso ao seu banco de produção, token real ou deploy foi realizado por este ambiente. Os testes automatizados simulam a Meta; a confirmação final é o teste na sua conta após publicar.
+
+Referências técnicas: documentação oficial da Meta, “Stories” e “Instagram webhook notification examples”, consultadas em 23/10/2026:
+https://developers.facebook.com/documentation/instagram-platform/instagram-graph-api/reference/ig-user/stories
+https://developers.facebook.com/documentation/instagram-platform/webhooks/examples

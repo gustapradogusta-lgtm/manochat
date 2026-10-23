@@ -2,19 +2,20 @@
   "source": "Atualização autorizada de botões por campanha, 23/10/2026; original preservado em VERIFY_META_BASELINE_ORIGINAL.json",
   "files": {
     "wrangler.toml": "ad920d6dba0616da6ac1a14e3e28cf484b2d656c5d553f101aaf2ec59c801ca6",
-    "src/meta.js": "d2edd2327335eb6c5d1dd2abc4056fcefe72e0e95f46141c0a1f0deee2d4f545",
+    "src/meta.js": "621e50ffb435ff6322bfc94d7c02306adb9887935df0b285b5c8ba4b64ab49cd",
     "src/lib/security.js": "43a3f0326725a620c4e6bf303c1d8e1ab7cc215837b24c9555d32ebd09255e3f",
-    "src/lib/automation.js": "898c9ddd239894988d99e6b4ecbb32c90bae858e09ea6245e9e300e397fc3207",
+    "src/lib/automation.js": "7d2062ea8e2aeb7d0eca0d3e42f416852e3d9ce7d91d8eda9123a8c5b7f73d12",
     "package.json": "47833ae9d9f4d27bc31288057e6e2f64c55fbf031b63b6a8d1d6c6d61478744c",
     "package-lock.json": "638074b0b26dd40677d820420d55dc260aa11eb19af91ac52d4d8f5f926cfe0c",
     "migrations/0001_initial.sql": "4f7449d998751874cff8d188a47925747bd5c07e3872e9fa52d4cd0d8ff9f3c3",
     "migrations/0002_public_reply.sql": "3928e32a3b7c6706331f4c76ec6c620f594f7cccdb348d115013a3e9335f46fd",
     "migrations/0003_match_all_comments.sql": "439a6f9e279ec5e3654d04dfd8dac66fa4a285c33f5a3d51536ebcf240da70f2"
   },
-  "webhookFlow": "ca1041bced186ae3718bb9deee2c9a067be3800028715c4683e5dfcb68507031",
+  "webhookFlow": "ab33fc0130bb9fb43d19ee50b7f889067362835e31530c5ec848c8e63fdc4f52",
   "authorized_changes": {
-    "src/meta.js": "Aceita objeto de template opcional; payload de texto, endpoint e autenticação preservados.",
-    "src/lib/automation.js": "Adiciona leitura de messaging_postbacks; parser de comentários e mensagens mantido.",
-    "src/index.js": "Configuração opcional, envio de templates e validação de cliques; assinatura, secrets e login preservados."
+    "src/meta.js": "Aceita objeto de template opcional; payload de texto, endpoint e autenticação preservados. Consulta isolada de capa atualizada por ID, sem alterações nos métodos de envio. Lista isolada de Stories ativos para validar links da própria conta.",
+    "src/lib/automation.js": "Adiciona leitura de messaging_postbacks; parser de comentários e mensagens mantido. Preserva timestamp de comentários recebido do webhook para rejeitar eventos antigos.",
+    "src/index.js": "Configuração opcional, envio de templates e validação de cliques; assinatura, secrets e login preservados. Sessão terminal de entrega e gatilho de resposta a Story com validação por link; campanhas pausadas e sessões expiradas não continuam.",
+    "delivery": "Link já representado por botão não é repetido no texto; arquivos abrem página própria com prévia PDF e download."
   }
 }

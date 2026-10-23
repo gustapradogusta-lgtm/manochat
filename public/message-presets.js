@@ -22,7 +22,7 @@ export function recommendedMessages(capabilities={},mode='link') {
     buttons:{
       first:firstInteractive?[button('RECEBER CONTEÚDO','continue')]:[],
       follow:interactive?[button('JÁ TE SEGUI ✅','continue')]:[],
-      delivery:interactive?[button(mode==='file'?'BAIXAR CONTEÚDO':'ACESSAR CONTEÚDO',mode==='file'?'delivery_file':'delivery_link')]:[]
+      delivery:interactive?(mode==='both'?[button('ACESSAR CONTEÚDO','delivery_link'),button('ABRIR DOCUMENTO','delivery_file')]:[button(mode==='file'?'ABRIR DOCUMENTO':'ACESSAR CONTEÚDO',mode==='file'?'delivery_file':'delivery_link')]):[]
     }
   };
 }

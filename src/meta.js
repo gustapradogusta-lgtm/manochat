@@ -50,3 +50,14 @@ export function listMedia(env, limit = 25) {
   const safeLimit = Math.min(Math.max(Number(limit) || 25, 1), 50);
   return callMeta(env, `me/media?fields=id,caption,media_type,media_url,thumbnail_url,permalink,timestamp&limit=${safeLimit}`);
 }
+
+// Refresh signed cover URLs independently of comment and DM processing.
+export function getMedia(env, id) {
+  if(!/^[a-z0-9_-]{1,80}$/i.test(id))throw Error('Publicação inválida.');
+  return callMeta(env, `${encodeURIComponent(id)}?fields=id,media_type,media_url,thumbnail_url`,{signal:AbortSignal.timeout(8000)});
+}
+
+export function listStories(env, after='') {
+  const account=encodeURIComponent(env.META_IG_USER_ID || 'me');
+  return callMeta(env, `${account}/stories?fields=id,media_type,media_url,thumbnail_url,permalink,timestamp&limit=50${after?'&after='+encodeURIComponent(after):''}`,{signal:AbortSignal.timeout(8000)});
+}

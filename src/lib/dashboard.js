@@ -1,11 +1,12 @@
+import {storiesReady} from './story-campaigns.js';
 import { buttonsReady, readButtons, privateButtonsEnabled } from './buttons.js';
 const json=(data,status=200)=>Response.json(data,{status});
 export function parseLabels(value=[]) {const list=Array.isArray(value)?value:String(value).split(',');return [...new Set(list.map(v=>String(v).trim().slice(0,40)).filter(Boolean))].slice(0,15);}
 export async function featuresReady(env){const row=await env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='campaign_options'").first();return Boolean(row);}
-export async function capabilities(env){const ready=await featuresReady(env);return json({databaseReady:ready,buttonsReady:await buttonsReady(env),privateReplyButtonsEnabled:privateButtonsEnabled(env),filesReady:ready&&Boolean(env.FILES),fileLimit:25*1024*1024});}
+export async function capabilities(env){const ready=await featuresReady(env);return json({databaseReady:ready,storiesReady:await storiesReady(env),buttonsReady:await buttonsReady(env),privateReplyButtonsEnabled:privateButtonsEnabled(env),filesReady:ready&&Boolean(env.FILES),fileLimit:25*1024*1024});}
 export async function decorateCampaigns(env,campaigns){
  const stats=await env.DB.prepare(`SELECT campaign_id,
- COUNT(DISTINCT CASE WHEN event_type='private_reply' AND status='sent' THEN igsid END) entered,
+ COUNT(DISTINCT CASE WHEN event_type IN ('private_reply','story_reply') AND status='sent' THEN igsid END) entered,
  COUNT(DISTINCT CASE WHEN event_type IN ('ask_follow','deliver') AND status='sent' THEN igsid END) replied,
  COUNT(DISTINCT CASE WHEN event_type='deliver' AND status='sent' THEN igsid END) completed,
  SUM(CASE WHEN status='failed' THEN 1 ELSE 0 END) failed

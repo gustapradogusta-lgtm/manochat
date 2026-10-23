@@ -1,3 +1,8 @@
+import {storiesReady,resolveStory,triggerFor,triggerStatement} from './lib/story-campaigns.js';
+import {sessionsReady,openSession,activeSession,claimDelivery,closeDelivery,eventTime} from './lib/automation-sessions.js';
+import {mediaPreview} from './lib/media-previews.js';
+import {viewFile} from './lib/file-viewer.js';
+import {deliveryText} from '../public/delivery-presentation.js';
 import { buttonsReady, normalizeButtons, readButtons, buttonsStatement, parseButtonPayload, sourceFingerprint, campaignMessage } from './lib/buttons.js';
 import { capabilities, contacts, decorateCampaigns, downloadFile, events, optionsStatement, prepareDelivery, saveLabels, uploadFile } from './lib/dashboard.js';
 import { canContinueCommentConversation, eventIdFor, isInstagramCommentReply, isInstagramStoryMessage, isOwnInstagramComment, matchesCommentCampaign, nextStep, parseInstagramEvents } from './lib/automation.js';
@@ -121,7 +126,8 @@ async function listCampaigns(env) {
     (SELECT COUNT(*) FROM conversations v WHERE v.campaign_id = c.id) leads,
     (SELECT COUNT(*) FROM conversations v WHERE v.campaign_id = c.id AND v.stage = 'delivered') delivered
     FROM campaigns c ORDER BY c.id DESC`).all();
-  return json({ campaigns: await decorateCampaigns(env, result.results || []) });
+  const campaigns=await decorateCampaigns(env,result.results||[]);
+  return json({campaigns:await Promise.all(campaigns.map(async c=>({...c,...await triggerFor(env,c.id)})))});
 }
 
 function cleanCampaign(body) {
@@ -150,6 +156,19 @@ function validateCampaign(campaign) {
 
 async function saveCampaign(request, env, id) {
   const body=await request.json().catch(()=>({}));
+  const existing=id?await triggerFor(env,id):{trigger_type:'comment'};
+  const type=body.trigger_type??existing.trigger_type;
+  if(!['comment','story'].includes(type))return json({error:'Gatilho inválido.'},422);
+  let trigger={trigger_type:'comment'};
+  if(type==='story'){
+    if(!await storiesReady(env))return json({error:'Aplique a migração 0006 para ativar Stories.'},503);
+    try{trigger=existing.trigger_type==='story' && (!Object.hasOwn(body,'story_link') || body.story_link===existing.story_link)?existing:await resolveStory(env,body.story_link);}
+    catch(error){return json({error:error.meta?'Não foi possível validar o Story na Meta. Confira o acesso da conta.':error.message},422);}
+    body.media_id=`story:${trigger.story_link_id}`;
+    body.public_reply='';
+    body.publication_title=trigger.publication_title||`Story de @${trigger.story_username}`;
+    if(trigger.thumbnail_url)body.thumbnail_url=trigger.thumbnail_url;
+  }
   const delivery=await prepareDelivery(request,env,body);
   if(delivery.error)return json({error:delivery.error},delivery.status);
   let buttonConfig;
@@ -158,7 +177,7 @@ async function saveCampaign(request, env, id) {
     const hasButtons=Object.values(buttonConfig).some(items=>items.length);
     if (hasButtons && !await buttonsReady(env)) return json({error:'Aplique a migração 0005 para ativar os botões.'},503);
     for (const stage of ['first','follow','delivery']) {
-      const text=stage==='first'?body.first_message:stage==='follow'?body.follow_message:`${body.delivery_message}\n${delivery.url}`;
+      const text=stage==='first'?body.first_message:stage==='follow'?body.follow_message:deliveryText({...body,delivery_url:delivery.url},buttonConfig.delivery,{delivery_link:delivery.link,file:delivery.file});
       if(buttonConfig[stage].length && (!String(text||'').trim() || [...String(text)].length>640)) return json({error:'Mensagens com botões precisam de texto e devem ter até 640 caracteres, incluindo links.'},422);
     }
     if(buttonConfig.delivery.some(b=>b.action==='delivery_file')&&!delivery.file) return json({error:'Selecione um arquivo para o botão de download.'},422);
@@ -186,6 +205,7 @@ async function saveCampaign(request, env, id) {
     const statements=[statement];
     if(delivery.ready)statements.push(optionsStatement(env,delivery,campaign,id));
     if(buttonConfig && await buttonsReady(env))statements.push(buttonsStatement(env,buttonConfig,campaign,id));
+    if(await storiesReady(env))statements.push(triggerStatement(env,trigger,campaign,id));
     await env.DB.batch(statements);
     return json({ ok: true });
   } catch (error) {
@@ -230,7 +250,10 @@ async function campaignForComment(env, event) {
   return (rows.results || []).find((campaign) => matchesCommentCampaign(event.text, campaign));
 }
 
-async function handleComment(env, event) {
+async function handleComment(env,event){return withContactLock(env,event.from?.id||event.user_id,()=>processComment(env,event));}
+
+async function processComment(env, event) {
+  if(!await isNewTrigger(env,event.from?.id||event.user_id,event))return;
   const commentId = event.id || event.comment_id;
   if (!commentId) {
     console.warn('manochat.comment_ignored', { reason: 'missing_comment_id' });
@@ -273,6 +296,7 @@ async function handleComment(env, event) {
         source_comment_id=excluded.source_comment_id, updated_at=CURRENT_TIMESTAMP`)
         .bind(recipientId, campaign.id, commentId).run();
     }
+    if(recipientId)await openSession(env,recipientId,'comment',commentId,event);
     await logInteraction(env, { igsid: recipientId, campaignId: campaign.id, eventType: 'private_reply', direction: 'outbound', status: 'sent', externalId: sent.message_id });
     console.info('manochat.private_reply_sent', { campaignId: campaign.id });
 
@@ -293,17 +317,47 @@ async function handleComment(env, event) {
   }
 }
 
-async function handleMessage(env, event) {
-  if (!event.senderId) return;
-  // Serialize competing replies/clicks per contact. Older databases retain the original flow.
-  if (!await buttonsReady(env)) return processMessage(env,event);
-  const owner=crypto.randomUUID(), now=Date.now();
+async function withContactLock(env,igsid,task){
+  if(!igsid || (!await buttonsReady(env) && !await sessionsReady(env)))return task();
+  const owner=crypto.randomUUID(),now=Date.now();
   const lock=await env.DB.prepare(`INSERT INTO conversation_locks(igsid,owner,expires_at) VALUES(?,?,?)
     ON CONFLICT(igsid) DO UPDATE SET owner=excluded.owner,expires_at=excluded.expires_at
-    WHERE conversation_locks.expires_at<? RETURNING owner`).bind(event.senderId,owner,now+300000,now).first();
-  if(lock?.owner!==owner) return;
-  try { return await processMessage(env,event); }
-  finally { await env.DB.prepare('DELETE FROM conversation_locks WHERE igsid=? AND owner=?').bind(event.senderId,owner).run(); }
+    WHERE conversation_locks.expires_at<? RETURNING owner`).bind(igsid,owner,now+300000,now).first();
+  if(lock?.owner!==owner)return;
+  try{return await task();}finally{await env.DB.prepare('DELETE FROM conversation_locks WHERE igsid=? AND owner=?').bind(igsid,owner).run();}
+}
+async function handleMessage(env,event){
+ if(!event.senderId || event.senderId===env.META_IG_USER_ID)return;
+ return withContactLock(env,event.senderId,()=>processMessage(env,event));
+}
+async function isNewTrigger(env,igsid,event){
+ if(!igsid || !await sessionsReady(env))return true;
+ const previous=await env.DB.prepare('SELECT source_event_at FROM automation_sessions WHERE igsid=?').bind(igsid).first();
+ const timestamp=eventTime(event.timestamp);
+ return !(timestamp && previous?.source_event_at && timestamp<previous.source_event_at);
+}
+async function startStory(env,event){
+ if(!await isNewTrigger(env,event.senderId,event))return;
+ // Only an explicit reply to our story can open a session. Mentions/referrals cannot.
+ const story=event.message?.reply_to?.story,mid=event.message?.mid,text=event.message?.text||'';
+ if(!story?.id || !mid || !text.trim() || !await storiesReady(env))return;
+ const timestamp=eventTime(event.timestamp);
+ if(timestamp && (timestamp<Date.now()-86400000 || timestamp>Date.now()+300000))return;
+ const rows=await env.DB.prepare(`SELECT c.*,t.trigger_type FROM campaigns c JOIN campaign_triggers t ON t.campaign_id=c.id
+ WHERE c.status='active' AND t.trigger_type='story' AND (t.story_id=? OR t.story_link_id=?) ORDER BY c.id DESC`).bind(String(story.id),String(story.id)).all();
+ const campaign=(rows.results||[]).find(c=>matchesCommentCampaign(text,c));
+ if(!campaign || !await claimEvent(env,eventIdFor('story',{mid}),'story'))return;
+ const igsid=event.senderId,source=`story:${mid}`;
+ // Fail closed before the external send: an uncertain delivery must not start a conversation.
+ await env.DB.prepare(`INSERT INTO contacts(igsid) VALUES(?) ON CONFLICT(igsid) DO UPDATE SET last_seen_at=CURRENT_TIMESTAMP`).bind(igsid).run();
+ await env.DB.prepare(`INSERT INTO conversations(igsid,campaign_id,stage,source_comment_id) VALUES(?,?,'delivered',?)
+ ON CONFLICT(igsid) DO UPDATE SET campaign_id=excluded.campaign_id,stage='delivered',source_comment_id=excluded.source_comment_id,updated_at=CURRENT_TIMESTAMP`).bind(igsid,campaign.id,source).run();
+ try{
+  const sent=await sendMessage(env,igsid,await campaignMessage(env,{...campaign,source_comment_id:source},'first',campaign.first_message),env.META_IG_USER_ID||event.recipientId);
+  await env.DB.prepare("UPDATE conversations SET stage='awaiting_reply',delivered_at=NULL,updated_at=CURRENT_TIMESTAMP WHERE igsid=? AND source_comment_id=?").bind(igsid,source).run();
+  await openSession(env,igsid,'story',source,event);
+  await logInteraction(env,{igsid,campaignId:campaign.id,eventType:'story_reply',direction:'outbound',status:'sent',externalId:sent.message_id});
+ }catch(error){await logInteraction(env,{igsid,campaignId:campaign.id,eventType:'story_reply',direction:'outbound',status:'failed',externalId:mid,detail:safeDetail(error)});}
 }
 
 async function processMessage(env, event) {
@@ -312,19 +366,17 @@ async function processMessage(env, event) {
   const text = event.postback ? 'continuar' : event.message?.text || '';
   const igUserId = env.META_IG_USER_ID || event.recipientId || event.entryId;
   if (!igsid || !text) return;
-  if (isInstagramStoryMessage(event)) {
-    console.info('manochat.message_ignored', { reason: 'story_message' });
-    return;
-  }
+  if(isInstagramStoryMessage(event))return startStory(env,event);
 
   const conversation = await env.DB.prepare(`SELECT v.*, c.* FROM conversations v
     JOIN campaigns c ON c.id=v.campaign_id WHERE v.igsid=?
     AND v.source_comment_id IS NOT NULL
     AND v.stage IN ('awaiting_reply', 'awaiting_follow')`).bind(igsid).first();
-  if (!canContinueCommentConversation(conversation)) {
+  if (!canContinueCommentConversation(conversation) || conversation.status!=='active' || !await activeSession(env,igsid,conversation,event)) {
     console.info('manochat.message_ignored', { reason: 'no_comment_conversation' });
     return;
   }
+  conversation.trigger_type=(await triggerFor(env,conversation.campaign_id)).trigger_type;
   if (event.postback) {
     const payload=parseButtonPayload(event.postback.payload);
     if (!payload || conversation.status!=='active' || payload.campaignId!==conversation.campaign_id || payload.stage!==(conversation.stage==='awaiting_reply'?'first':'follow')) return;
@@ -345,12 +397,14 @@ async function processMessage(env, event) {
   const decision = nextStep({ stage: conversation.stage, inboundText: text, followsBusiness: follows, followRequired: Boolean(conversation.follow_required) });
   if (decision.action === 'ignore') return;
 
+  if(decision.action==='deliver' && !await claimDelivery(env,igsid,conversation.source_comment_id))return;
   const outbound = decision.action === 'deliver'
     ? `${conversation.delivery_message}\n${conversation.delivery_url}`
     : conversation.follow_message;
   try {
     if (!igUserId) throw new Error('Instagram professional account ID is missing');
     const sent = await sendMessage(env, igsid, await campaignMessage(env, conversation, decision.action==='deliver'?'delivery':'follow', outbound), igUserId);
+    if(decision.action==='deliver')await closeDelivery(env,igsid,conversation.source_comment_id);
     await env.DB.prepare(`INSERT INTO contacts(igsid, username, follows_business) VALUES (?, ?, ?)
       ON CONFLICT(igsid) DO UPDATE SET username=COALESCE(excluded.username, username),
       follows_business=excluded.follows_business, last_seen_at=CURRENT_TIMESTAMP`)
@@ -363,6 +417,7 @@ async function processMessage(env, event) {
       .bind(igsid, conversation.campaign_id, decision.stage, decision.stage).run();
     await logInteraction(env, { igsid, campaignId: conversation.campaign_id, eventType: decision.action, direction: 'outbound', status: 'sent', externalId: sent.message_id });
   } catch (error) {
+    if(decision.action==='deliver')await closeDelivery(env,igsid,conversation.source_comment_id,'failed');
     await logInteraction(env, { igsid, campaignId: conversation.campaign_id, eventType: decision.action, direction: 'outbound', status: 'failed', externalId: mid, detail: safeDetail(error) });
   }
 }
@@ -387,9 +442,14 @@ async function webhook(request, env, ctx) {
     events: events.length,
     types: [...new Set(events.map((event) => event.type))]
   });
-  ctx.waitUntil(Promise.allSettled(events.map((event) => event.type === 'comment'
-    ? handleComment(env, event)
-    : handleMessage(env, event))).then((results) => {
+  // Keep each contact's events in order; independent contacts can process concurrently.
+  const chains=new Map(),pending=[];
+  for(const [index,event] of events.entries()){
+    const key=String(event.type==='comment'?(event.from?.id||event.user_id||`comment-${index}`):(event.senderId||`message-${index}`));
+    const task=(chains.get(key)||Promise.resolve()).catch(()=>{}).then(()=>event.type==='comment'?handleComment(env,event):handleMessage(env,event));
+    chains.set(key,task);pending.push(task);
+  }
+  ctx.waitUntil(Promise.allSettled(pending).then((results) => {
     const rejected = results.filter((result) => result.status === 'rejected');
     if (rejected.length) {
       console.error('manochat.webhook_processing_failed', {
@@ -407,7 +467,9 @@ async function simulate(request, env) {
   if (!campaign) return json({ error: 'Campanha não encontrada.' }, 404);
   const result = nextStep({ stage: body.stage || 'awaiting_reply', inboundText: body.message || 'quero', followsBusiness: Boolean(body.follows), followRequired: Boolean(campaign.follow_required) });
   const reply = result.action === 'deliver' ? `${campaign.delivery_message}\n${campaign.delivery_url}` : result.action === 'ask_follow' ? campaign.follow_message : 'Nenhuma mensagem seria enviada.';
-  return json({ action: result.action, nextStage: result.stage, reply });
+  const outbound=result.action==='ignore'?reply:await campaignMessage(env,campaign,result.action==='deliver'?'delivery':'follow',reply);
+  const template=typeof outbound==='string'?null:outbound.attachment?.payload;
+  return json({ action: result.action, nextStage: result.stage, reply:template?.text||outbound,buttons:template?.buttons||[] });
 }
 
 export default {
@@ -415,6 +477,8 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
+    const viewMatch=path.match(/^\/(view|preview)\/([a-f0-9-]{36})$/i);
+    if(viewMatch && ['GET','HEAD'].includes(request.method))return viewFile(request,env,viewMatch[2],viewMatch[1]==='preview');
     const fileMatch=path.match(/^\/files\/([a-f0-9-]{36})$/i);
     if(fileMatch && ['GET','HEAD'].includes(request.method))return downloadFile(request,env,fileMatch[1]);
     const publicPage = legalPage(path, request.method);
@@ -441,6 +505,13 @@ export default {
       if(contactMatch && request.method==='PUT')return saveLabels(request,env,decodeURIComponent(contactMatch[1]));
       if(path==='/api/files' && request.method==='POST')return uploadFile(request,env);
       if (path === '/api/overview' && request.method === 'GET') return overview(env);
+      const thumbnailMatch=path.match(/^\/api\/media\/([a-z0-9_-]{1,80})\/thumbnail$/i);
+      if(thumbnailMatch && request.method==='GET')return mediaPreview(env,thumbnailMatch[1]);
+      if(path==='/api/stories/resolve' && request.method==='POST'){
+        if(!await storiesReady(env))return json({error:'Aplique a migração 0006 para ativar Stories.'},503);
+        const body=await request.json().catch(()=>({}));
+        try{return json({story:await resolveStory(env,body.url)});}catch(error){return json({error:error.meta?'Não foi possível consultar os Stories da conta conectada. Confira o acesso da Meta.':error.message},422);}
+      }
       if (path === '/api/media' && request.method === 'GET') {
         try {
           const result = await listMedia(env);

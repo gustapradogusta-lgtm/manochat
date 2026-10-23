@@ -1,3 +1,4 @@
+import {deliveryButtonUrl,deliveryText} from '../../public/delivery-presentation.js';
 // Button templates are opt-in. Plain-text campaigns retain their original payload.
 export const emptyButtons = () => ({ first: [], follow: [], delivery: [] });
 export async function buttonsReady(env) {
@@ -46,18 +47,20 @@ export function parseButtonPayload(value) {
 export async function sourceFingerprint(id) { return [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(id))))].slice(0,8).map(v=>v.toString(16).padStart(2,'0')).join(''); }
 export async function campaignMessage(env, campaign, stage, text) {
   // Meta documents private replies as text. Enable templates there only after an account-level test.
-  if (stage === 'first' && !privateButtonsEnabled(env)) return text;
+  if (stage === 'first' && campaign.trigger_type!=='story' && !privateButtonsEnabled(env)) return text;
   const config = await readButtons(env, campaign.id || campaign.campaign_id);
   const selected = config[stage] || [];
   if (!selected.length) return text;
   let options = {};
-  if (selected.some(b => b.action.startsWith('delivery_'))) {
+  if (stage==='delivery' || selected.some(b => b.action.startsWith('delivery_'))) {
     options = await env.DB.prepare('SELECT delivery_link,file_json FROM campaign_options WHERE campaign_id=?').bind(campaign.id || campaign.campaign_id).first() || {};
   }
+  const file=JSON.parse(options.file_json || 'null');
+  if(stage==='delivery')text=deliveryText(campaign,selected,{...options,file});
   const source=await sourceFingerprint(campaign.source_comment_id);
   const buttons = selected.map(b => {
     if (b.action === 'continue') return { type:'postback', title:b.label, payload:`mc1:${campaign.id || campaign.campaign_id}:${stage}:${b.id}:${source}` };
-    const url = b.action === 'delivery_link' ? options.delivery_link || campaign.delivery_url?.split('\n')[0] : b.action === 'delivery_file' ? JSON.parse(options.file_json || 'null')?.url : b.url;
+    const url=deliveryButtonUrl(b,campaign,{...options,file});
     if (!url || !/^https?:\/\//i.test(url)) throw Error('O destino de um botão está indisponível. Revise a campanha.');
     return { type:'web_url', title:b.label, url };
   });

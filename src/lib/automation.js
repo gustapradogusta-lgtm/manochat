@@ -73,7 +73,7 @@ export function parseInstagramEvents(body) {
   for (const entry of body?.entry || []) {
     for (const change of entry.changes || []) {
       if (change.field === 'comments' && change.value) {
-        output.push({ type: 'comment', entryId: entry.id, ...change.value });
+        output.push({ type: 'comment', entryId: entry.id, timestamp:entry.time?entry.time*1000:undefined, ...change.value });
       }
     }
     for (const item of entry.messaging || []) {

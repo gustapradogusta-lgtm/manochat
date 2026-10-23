@@ -64,15 +64,23 @@ function renderOverview() {
   $('#activityList').innerHTML = interactions.slice(0,15).map(eventRow).join('') || '<div class="empty"><strong>Nenhum evento ainda</strong></div>';
 }
 
+function bindImageFallbacks(root){
+  root.querySelectorAll('img').forEach(img=>{
+    const fallback=()=>{const box=img.parentElement;box.classList.add('preview-unavailable');box.innerHTML='<div class="thumbnail-placeholder"><span>▧</span><small>Prévia indisponível</small></div>';};
+    img.addEventListener('error',fallback,{once:true});
+    if(img.complete && !img.naturalWidth)fallback();
+  });
+}
 function renderCampaigns() {
   const list=$('#campaignList');
   if(!state.campaigns.length){list.innerHTML='<div class="panel empty"><strong>Nenhuma campanha</strong><p>Crie a primeira automação para começar.</p></div>';$('#simCampaign').innerHTML='';return;}
   list.innerHTML=state.campaigns.map(c=>{
     const r=campaignResults(c);
-    const image=/^https?:\/\//i.test(c.thumbnail_url||'')?c.thumbnail_url:null;
-    const thumbnail=image?`<img src="${esc(image)}" alt="Miniatura da publicação" loading="lazy"><span class="thumbnail-play">▶</span>`:'<div class="thumbnail-placeholder">↗<small>SEM CAPA</small></div>';
-    return `<article class="campaign-card refined-campaign"><div class="campaign-cover">${thumbnail}</div><div class="campaign-body"><div class="campaign-card-head"><div><span class="campaign-context">${c.media_id?'PUBLICAÇÃO ESPECÍFICA':'TODAS AS PUBLICAÇÕES'}</span><h3>${esc(c.name)}</h3><p>${esc(c.publication_title||(c.media_id?`Publicação ${c.media_id}`:'Automação para qualquer publicação'))}</p></div><em class="state ${c.status}">${c.status==='active'?'ATIVA':'PAUSADA'}</em></div><div class="campaign-tags"><span class="keyword">${c.match_all_comments?'QUALQUER COMENTÁRIO':esc(c.keyword)}</span><span>${c.follow_required?'Exige seguir o perfil':'Sem exigência de follow'}</span></div><div class="campaign-numbers"><div><strong>${r.entered}</strong><small>ENTRADAS</small></div><div><strong>${r.replied}</strong><small>RESPOSTAS</small></div><div><strong>${r.delivered}</strong><small>ENTREGAS</small></div><div><strong>${campaignRate(c)}<i>%</i></strong><small>CONCLUSÃO</small></div></div><div class="campaign-card-footer"><span>Resultados acumulados · perfis únicos</span><div><button class="secondary compact results-campaign" data-id="${c.id}" type="button">Ver resultados ↗</button><button class="secondary compact duplicate-campaign" data-id="${c.id}" type="button">Duplicar</button><button class="secondary compact edit-campaign" data-id="${c.id}" type="button">Editar</button></div></div></div></article>`;
+    const image=(c.trigger_type==='story'?c.story_id:c.media_id)?`/api/media/${encodeURIComponent(c.trigger_type==='story'?c.story_id:c.media_id)}/thumbnail`:(/^https?:\/\//i.test(c.thumbnail_url||'')?c.thumbnail_url:null);
+    const thumbnail=image?`<img src="${esc(image)}" alt="Capa da publicação" loading="lazy" decoding="async" referrerpolicy="no-referrer"><span class="thumbnail-play">▶</span>`:'<div class="thumbnail-placeholder">↗<small>SEM CAPA</small></div>';
+    return `<article class="campaign-card refined-campaign"><div class="campaign-cover">${thumbnail}</div><div class="campaign-body"><div class="campaign-card-head"><div><span class="campaign-context">${c.trigger_type==='story'?'RESPOSTA A STORY':c.media_id?'PUBLICAÇÃO ESPECÍFICA':'TODAS AS PUBLICAÇÕES'}</span><h3>${esc(c.name)}</h3><p>${esc(c.publication_title||(c.media_id?`Publicação ${c.media_id}`:'Automação para qualquer publicação'))}</p></div><em class="state ${c.status}">${c.status==='active'?'ATIVA':'PAUSADA'}</em></div><div class="campaign-tags"><span class="keyword">${c.match_all_comments?(c.trigger_type==='story'?'QUALQUER RESPOSTA':'QUALQUER COMENTÁRIO'):esc(c.keyword)}</span><span>${c.follow_required?'Exige seguir o perfil':'Sem exigência de follow'}</span></div><div class="campaign-numbers"><div><strong>${r.entered}</strong><small>ENTRADAS</small></div><div><strong>${r.replied}</strong><small>RESPOSTAS</small></div><div><strong>${r.delivered}</strong><small>ENTREGAS</small></div><div><strong>${campaignRate(c)}<i>%</i></strong><small>CONCLUSÃO</small></div></div><div class="campaign-card-footer"><span>Resultados acumulados · perfis únicos</span><div><button class="secondary compact results-campaign" data-id="${c.id}" type="button">Ver resultados ↗</button><button class="secondary compact duplicate-campaign" data-id="${c.id}" type="button">Duplicar</button><button class="secondary compact edit-campaign" data-id="${c.id}" type="button">Editar</button></div></div></div></article>`;
   }).join('');
+  bindImageFallbacks(list);
   $$('.edit-campaign').forEach(button=>button.addEventListener('click',()=>openCampaign(state.campaigns.find(c=>c.id===Number(button.dataset.id)))));
   $$('.duplicate-campaign').forEach(button=>button.addEventListener('click',()=>{const original=state.campaigns.find(c=>c.id===Number(button.dataset.id));const copy=duplicateCampaign(original,state.campaigns);openCampaign({...copy,id:null});toast('Cópia preparada e pausada. Escolha outra publicação ou palavra-chave e salve.')}));
   $$('.results-campaign').forEach(button=>button.addEventListener('click',()=>openResults(state.campaigns.find(c=>c.id===Number(button.dataset.id)))));
@@ -94,20 +102,23 @@ async function loadAll() {
     const [overview, campaigns] = await Promise.all([api('/api/overview'), api('/api/campaigns')]);
     state.overview = overview; state.campaigns = campaigns.campaigns;
     renderOverview(); renderCampaigns();syncEventFilterOptions();
-    api('/api/capabilities').then(result=>{capabilitiesState=result;if($('#campaignDialog').open){syncDeliveryFields();setButtonCapabilities(result);}}).catch(()=>{});
+    api('/api/capabilities').then(result=>{capabilitiesState=result;if($('#campaignDialog').open){syncDeliveryFields();setButtonCapabilities(editorCapabilities());syncTriggerFields();}}).catch(()=>{});
     $('#webhookUrl').textContent = `${location.origin}/webhooks/instagram`;
   } catch (error) { toast(error.message); }
 }
 
 function openCampaign(campaign = null) {
-  const preset=recommendedMessages(capabilitiesState,campaign?.delivery_mode||'link');
+  $('#campaignTrigger').value=campaign?.trigger_type||'comment';
+  $('#campaignStoryLink').value=campaign?.story_link||'';
+  $('#storyValidation').textContent='Apenas respostas a esse Story iniciam a campanha. Menções e mensagens comuns não iniciam.';
+  const preset=recommendedMessages(editorCapabilities(),campaign?.delivery_mode||'link');
   $('#dialogTitle').textContent = campaign?.id ? 'Editar campanha' : 'Nova campanha';
   $('#campaignId').value = campaign?.id || '';
   $('#campaignName').value = campaign?.name || '';
   $('#campaignKeyword').value = campaign?.keyword || '';
   $('#campaignMatchAll').checked = campaign ? Boolean(campaign.match_all_comments) : false;
   syncCommentTriggerFields();
-  $('#campaignMedia').value = campaign?.media_id || '';
+  $('#campaignMedia').value = campaign?.trigger_type==='story'?'':campaign?.media_id || '';
   $('#campaignPublicReply').value = campaign ? (campaign.public_reply ?? '') : preset.public_reply;
   $('#campaignFirst').value = campaign ? (campaign.first_message??'') : preset.first_message;
   $('#campaignFollow').value = campaign ? (campaign.follow_message??'') : preset.follow_message;
@@ -124,11 +135,32 @@ function openCampaign(campaign = null) {
   $('#deleteCampaign').classList.toggle('hidden', !campaign?.id);
   $('#mediaPicker').classList.add('hidden');
   $('#mediaGrid').innerHTML = '';
-  loadButtonEditor(campaign ? campaign.buttons : preset.buttons,capabilitiesState);
+  loadButtonEditor(campaign ? campaign.buttons : preset.buttons,editorCapabilities());
+  syncTriggerFields();
   showEditorTab('trigger');refreshChoices();
   $('#campaignDialog').showModal();
 }
 
+function editorCapabilities(){return {...capabilitiesState,storyMode:$('#campaignTrigger').value==='story',privateReplyButtonsEnabled:$('#campaignTrigger').value==='story'||capabilitiesState.privateReplyButtonsEnabled};}
+function syncTriggerFields(){
+ const story=$('#campaignTrigger').value==='story';
+ $('#publicationField').classList.toggle('hidden',story);$('#campaignMedia').disabled=story;
+ $('#publicReplyField').classList.toggle('hidden',story);$('#campaignPublicReply').disabled=story;
+ $('#storyField').classList.toggle('hidden',!story);$('#campaignStoryLink').required=story;$('#campaignStoryLink').disabled=!story;
+ $('#storyMigrationNote').classList.toggle('hidden',Boolean(capabilitiesState.storiesReady));
+ $('#campaignTrigger option[value="story"]').disabled=!capabilitiesState.storiesReady;
+ $('#triggerAnyTitle').textContent=story?'Qualquer resposta ao Story':'Qualquer comentário';
+ $('#triggerAnyHint').textContent=story?'Inicia com qualquer texto enviado em resposta a esse Story':'Dispara independentemente do texto comentado';
+ if(story)$('#mediaPicker').classList.add('hidden');
+ setButtonCapabilities(editorCapabilities());refreshChoices();
+}
+$('#campaignTrigger').addEventListener('change',syncTriggerFields);
+$('#campaignStoryLink').addEventListener('input',()=>{$('#storyValidation').textContent='O link será validado ao conferir ou salvar a campanha.';});
+$('#validateStory').addEventListener('click',async()=>{
+ $('#validateStory').disabled=true;$('#storyValidation').textContent='Conferindo o Story na conta conectada…';
+ try{const {story}=await api('/api/stories/resolve',{method:'POST',body:JSON.stringify({url:$('#campaignStoryLink').value})});$('#campaignStoryLink').value=story.story_link;selectedMedia={thumbnail_url:story.thumbnail_url||'',caption:story.publication_title};$('#storyValidation').textContent='Story conferido! Configure a palavra-chave, as mensagens e salve a campanha.';}
+ catch(error){$('#storyValidation').textContent=error.message;}finally{$('#validateStory').disabled=false;}
+});
 function syncCommentTriggerFields() {
   const matchAll = $('#campaignMatchAll').checked;
   $('#campaignKeyword').required = !matchAll;
@@ -147,7 +179,7 @@ function renderMedia(items) {
     return;
   }
   grid.innerHTML = items.map((item) => {
-    const image = item.thumbnail_url || item.media_url || '';
+    const image = item.id ? `/api/media/${encodeURIComponent(item.id)}/thumbnail` : item.thumbnail_url || (['IMAGE','CAROUSEL_ALBUM'].includes(item.media_type)?item.media_url:'');
     const caption = String(item.caption || 'Publicação sem legenda').trim();
     const date = item.timestamp ? new Date(item.timestamp).toLocaleDateString('pt-BR') : '';
     return `<button class="media-option" type="button" data-media-id="${esc(item.id)}">
@@ -156,6 +188,7 @@ function renderMedia(items) {
       <span class="media-select">Selecionar</span>
     </button>`;
   }).join('');
+  bindImageFallbacks(grid);
   $$('.media-option', grid).forEach((button) => button.addEventListener('click', () => {
     $('#campaignMedia').value = button.dataset.mediaId;
     const media=items.find(item=>String(item.id)===button.dataset.mediaId);
@@ -242,6 +275,7 @@ $('#campaignForm').addEventListener('submit', async (event) => {
   event.preventDefault();
   const id = $('#campaignId').value;
   const body = {
+    trigger_type:$('#campaignTrigger').value,story_link:$('#campaignStoryLink').value,
     name: $('#campaignName').value, keyword: $('#campaignKeyword').value, media_id: $('#campaignMedia').value,
     buttons:buttonConfig(),
     match_all_comments: $('#campaignMatchAll').checked,
@@ -265,7 +299,7 @@ $('#simulatorForm').addEventListener('submit', async (event) => {
   event.preventDefault();
   try {
     const result = await api('/api/simulate', { method: 'POST', body: JSON.stringify({ campaignId: $('#simCampaign').value, stage: $('#simStage').value, message: $('#simMessage').value, follows: $('#simFollows').checked }) });
-    $('#chatPreview').innerHTML = `<div class="bubble sent">${esc($('#simMessage').value)}</div><div class="bubble received">${esc(result.reply)}</div>`;
+    $('#chatPreview').innerHTML = `<div class="bubble sent">${esc($('#simMessage').value)}</div><div class="bubble received">${esc(result.reply)}</div>${(result.buttons||[]).map(b=>`<div class="sim-delivery-button">${esc(b.title)}</div>`).join('')}`;
     if(result.action==='deliver'){const c=state.campaigns.find(c=>c.id===Number($('#simCampaign').value));if(c?.delivery_file && c.delivery_mode!=='link')addFileDownload(c.delivery_file);}
   } catch (error) { toast(error.message); }
 });
@@ -327,12 +361,12 @@ $('#campaignForm').addEventListener('invalid',e=>{const panel=e.target.closest('
 installChoices();initButtonEditor();
 
 $('#applyMessagePreset').addEventListener('click',()=>{
-  const model=recommendedMessages(capabilitiesState,$('#deliveryMode').value);
+  const model=recommendedMessages(editorCapabilities(),$('#deliveryMode').value);
   // Keep the previous draft for one-click undo, including unsaved button changes.
   messageDraftBeforePreset={public_reply:$('#campaignPublicReply').value,first_message:$('#campaignFirst').value,follow_message:$('#campaignFollow').value,delivery_message:$('#campaignDelivery').value,buttons:buttonConfig()};
   fillMessageDraft(model);$('#undoMessagePreset').classList.remove('hidden');
-  $('#messagePresetNotice').textContent=capabilitiesState.buttonsReady&&capabilitiesState.privateReplyButtonsEnabled?'Modelo com RECEBER CONTEÚDO aplicado ao rascunho. Revise e salve a campanha.':'Modelo aplicado ao rascunho. A primeira DM segue por texto até ativar os botões iniciais no Worker. Revise antes de salvar.';
+  $('#messagePresetNotice').textContent=editorCapabilities().buttonsReady&&editorCapabilities().privateReplyButtonsEnabled?'Modelo com RECEBER CONTEÚDO aplicado ao rascunho. Revise e salve a campanha.':'Modelo aplicado ao rascunho. A primeira DM segue por texto até ativar os botões iniciais no Worker. Revise antes de salvar.';
 });
 let messageDraftBeforePreset=null;
-function fillMessageDraft(model){for(const [key,id] of [['public_reply','campaignPublicReply'],['first_message','campaignFirst'],['follow_message','campaignFollow'],['delivery_message','campaignDelivery']])$('#'+id).value=model[key];loadButtonEditor(model.buttons,capabilitiesState);selectPreview('first');}
+function fillMessageDraft(model){for(const [key,id] of [['public_reply','campaignPublicReply'],['first_message','campaignFirst'],['follow_message','campaignFollow'],['delivery_message','campaignDelivery']])$('#'+id).value=model[key];loadButtonEditor(model.buttons,editorCapabilities());selectPreview('first');}
 $('#undoMessagePreset').addEventListener('click',()=>{if(!messageDraftBeforePreset)return;fillMessageDraft(messageDraftBeforePreset);messageDraftBeforePreset=null;$('#undoMessagePreset').classList.add('hidden');$('#messagePresetNotice').textContent='Rascunho anterior restaurado. Nenhuma alteração foi salva automaticamente.';});
