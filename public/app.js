@@ -1,3 +1,4 @@
+import {recommendedMessages} from './message-presets.js';
 import {installChoices,refreshChoices,closeChoices} from './ui.js';
 import {buttonConfig,loadButtonEditor,initButtonEditor,setButtonCapabilities,selectPreview} from './button-editor.js';
 import { duplicateCampaign, parseTags, validateDelivery } from './campaign-tools.js';
@@ -99,6 +100,7 @@ async function loadAll() {
 }
 
 function openCampaign(campaign = null) {
+  const preset=recommendedMessages(capabilitiesState,campaign?.delivery_mode||'link');
   $('#dialogTitle').textContent = campaign?.id ? 'Editar campanha' : 'Nova campanha';
   $('#campaignId').value = campaign?.id || '';
   $('#campaignName').value = campaign?.name || '';
@@ -106,10 +108,10 @@ function openCampaign(campaign = null) {
   $('#campaignMatchAll').checked = campaign ? Boolean(campaign.match_all_comments) : false;
   syncCommentTriggerFields();
   $('#campaignMedia').value = campaign?.media_id || '';
-  $('#campaignPublicReply').value = campaign ? (campaign.public_reply ?? 'Te enviei no Direct! 😊') : 'Te enviei no Direct! 😊';
-  $('#campaignFirst').value = campaign?.first_message || 'Oi! Vi seu comentário 😊 Responda QUERO aqui para eu liberar o conteúdo.';
-  $('#campaignFollow').value = campaign?.follow_message || 'Falta só um passo: siga o meu perfil e responda PRONTO por aqui.';
-  $('#campaignDelivery').value = campaign?.delivery_message || 'Perfeito! Aqui está o conteúdo que prometi:';
+  $('#campaignPublicReply').value = campaign ? (campaign.public_reply ?? '') : preset.public_reply;
+  $('#campaignFirst').value = campaign ? (campaign.first_message??'') : preset.first_message;
+  $('#campaignFollow').value = campaign ? (campaign.follow_message??'') : preset.follow_message;
+  $('#campaignDelivery').value = campaign ? (campaign.delivery_message??'') : preset.delivery_message;
   $('#campaignUrl').value = campaign?.delivery_link ?? campaign?.delivery_url ?? '';
   selectedMedia={thumbnail_url:campaign?.thumbnail_url||'',caption:campaign?.publication_title||''};
   $('#deliveryMode').value=campaign?.delivery_mode||'link';
@@ -118,10 +120,11 @@ function openCampaign(campaign = null) {
   $('#campaignFollowRequired').checked = campaign ? Boolean(campaign.follow_required) : true;
   $('#campaignStatus').value = campaign?.status || 'active';
   $('#campaignError').textContent = '';
+  messageDraftBeforePreset=null;$('#undoMessagePreset').classList.add('hidden');$('#messagePresetNotice').textContent='';
   $('#deleteCampaign').classList.toggle('hidden', !campaign?.id);
   $('#mediaPicker').classList.add('hidden');
   $('#mediaGrid').innerHTML = '';
-  loadButtonEditor(campaign?.buttons,capabilitiesState);
+  loadButtonEditor(campaign ? campaign.buttons : preset.buttons,capabilitiesState);
   showEditorTab('trigger');refreshChoices();
   $('#campaignDialog').showModal();
 }
@@ -322,3 +325,14 @@ $$('[data-editor-tab]').forEach(b=>b.addEventListener('click',()=>showEditorTab(
 $$('[data-editor-next]').forEach(b=>b.addEventListener('click',()=>{showEditorTab(b.dataset.editorNext);$(`[data-editor-tab="${b.dataset.editorNext}"]`).focus();}));
 $('#campaignForm').addEventListener('invalid',e=>{const panel=e.target.closest('[data-editor-panel]');if(panel)showEditorTab(panel.dataset.editorPanel);},true);
 installChoices();initButtonEditor();
+
+$('#applyMessagePreset').addEventListener('click',()=>{
+  const model=recommendedMessages(capabilitiesState,$('#deliveryMode').value);
+  // Keep the previous draft for one-click undo, including unsaved button changes.
+  messageDraftBeforePreset={public_reply:$('#campaignPublicReply').value,first_message:$('#campaignFirst').value,follow_message:$('#campaignFollow').value,delivery_message:$('#campaignDelivery').value,buttons:buttonConfig()};
+  fillMessageDraft(model);$('#undoMessagePreset').classList.remove('hidden');
+  $('#messagePresetNotice').textContent=capabilitiesState.buttonsReady&&capabilitiesState.privateReplyButtonsEnabled?'Modelo com RECEBER CONTEÚDO aplicado ao rascunho. Revise e salve a campanha.':'Modelo aplicado ao rascunho. A primeira DM segue por texto até ativar os botões iniciais no Worker. Revise antes de salvar.';
+});
+let messageDraftBeforePreset=null;
+function fillMessageDraft(model){for(const [key,id] of [['public_reply','campaignPublicReply'],['first_message','campaignFirst'],['follow_message','campaignFollow'],['delivery_message','campaignDelivery']])$('#'+id).value=model[key];loadButtonEditor(model.buttons,capabilitiesState);selectPreview('first');}
+$('#undoMessagePreset').addEventListener('click',()=>{if(!messageDraftBeforePreset)return;fillMessageDraft(messageDraftBeforePreset);messageDraftBeforePreset=null;$('#undoMessagePreset').classList.add('hidden');$('#messagePresetNotice').textContent='Rascunho anterior restaurado. Nenhuma alteração foi salva automaticamente.';});

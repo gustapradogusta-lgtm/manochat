@@ -1,4 +1,31 @@
-# ManoChat Studio — atualização de 23/10/2026
+# ManoChat Studio — atualização revisada de 23/10/2026
+
+## Novidade desta revisão: primeira chamada e mensagens prontas
+
+O token expirado foi identificado nos registros da conta; a troca feita na Cloudflare restabeleceu os envios, segundo seu teste. Este pacote NÃO contém esse token e NÃO substitui nenhum secret. O erro de expiração não demonstrava uma falha dos botões. A aceitação dos botões na primeira private reply ainda precisa ser testada na conta real.
+
+Esta revisão melhora os textos para campanhas novas e adiciona “Aplicar mensagens prontas” na aba Conversa. Em campanhas existentes, esse botão modifica apenas o rascunho; existe “Desfazer” e só salvar aplica as mudanças. Palavras-chave, publicação, status, links e arquivos são preservados ao aplicar o modelo.
+
+Para habilitar a primeira chamada com botão:
+1. A versão nova de src/ e public/ precisa estar implantada. Se você reverteu para a versão antiga durante o diagnóstico, ela ainda não tem este editor de botões. Envie esta revisão pelo processo de atualização descrito abaixo, mantendo o token novo na Cloudflare.
+2. Confira que a migração 0005 foi aplicada ao mesmo banco D1 usado pelo Worker. Não precisa aplicá-la novamente se as duas tabelas já existem.
+3. No app Meta existente, preserve os campos assinados e inclua messaging_postbacks para processar os cliques, tanto no app quanto na assinatura da conta quando houver lista explícita de campos.
+4. Na Cloudflare → Worker manochat → Configurações → Variáveis e segredos → Produção, adicione uma VARIÁVEL de texto com nome META_PRIVATE_REPLY_BUTTONS_ENABLED e valor true (tudo minúsculo). Essa é uma opção nova, não um token. Não substitua META_ACCESS_TOKEN nem qualquer outro secret. Aplique a alteração em produção.
+5. Recarregue o ManoChat, abra uma campanha de teste e, na aba Conversa, clique “Aplicar mensagens prontas”. Confira o botão RECEBER CONTEÚDO na primeira mensagem com ação Continuar conversa. Revise o restante e salve.
+6. Teste com um comentário novo feito por outra conta em uma publicação isolada. O clique continua a conversa; se a campanha exigir follow, ele continua sendo conferido antes da entrega. Teste contas que seguem e que não seguem o perfil.
+7. Se a Meta rejeitar o template da primeira DM, volte a variável para false e use um comentário novo para testar o envio por texto. Não repita a tentativa no comentário que falhou. Mantenha campanhas principais por texto até confirmar esse teste.
+
+Mensagens recomendadas quando a primeira chamada estiver habilitada:
+- Comentário: Te chamei no Direct com o próximo passo 🙌 Dá uma olhada por lá!
+- Primeira DM: Seu conteúdo está quase na sua mão! 🙌 / Toque no botão abaixo para continuar e receber o que prometi.
+- Botão: RECEBER CONTEÚDO → Continuar conversa.
+- Pedido de follow: Falta só um passo para liberar seu conteúdo 💚 / Siga meu perfil e depois toque em JÁ TE SEGUI para eu conferir.
+- Botão de follow: JÁ TE SEGUI ✅ → Continuar conversa.
+- Entrega: Pronto! Seu conteúdo está liberado 🎉 / Acesse pelo botão abaixo e aproveite!
+- Botão de entrega: ACESSAR CONTEÚDO, ou BAIXAR CONTEÚDO no modelo de arquivo. Se mudar a forma de entrega depois de aplicar o modelo, revise a ação do botão da entrega para corresponder ao material selecionado.
+
+Sem a ativação da primeira DM, o modelo instrui a pessoa a responder EU QUERO e não apresenta um botão que ainda não seria enviado.
+
 
 Este é um pacote de ATUALIZAÇÃO, não uma instalação do zero. Foi preparado a partir do ZIP ManoChat-Atualizacao-GitHub.zip entregue em 10/10/2026. Se você alterou o projeto depois disso, compare essas alterações antes de substituir arquivos. Nada foi publicado no GitHub, na Cloudflare ou na Meta durante esta preparação.
 
@@ -111,7 +138,7 @@ Não ative na campanha principal antes de verificar a aceitação pela Meta em u
 
 ## Validação e próxima etapa
 
-33 testes automatizados passaram. O fluxo sem botões, arquivos, etiquetas, migração, autenticação do painel, assinatura do webhook, deduplicação e botões foram exercitados localmente. O visual foi revisado no navegador em desktop e em um viewport de 390 × 844 pixels, nos temas clean e dark. Arquivos de código novos passaram pela checagem de sintaxe.
+37 testes automatizados passaram. O fluxo sem botões, arquivos, etiquetas, migração, autenticação do painel, assinatura do webhook, deduplicação e botões foram exercitados localmente. O visual foi revisado no navegador em desktop e em um viewport de 390 × 844 pixels, nos temas clean e dark. Arquivos de código novos passaram pela checagem de sintaxe.
 
 Não houve teste real de envio na Meta, implantação em produção ou execução de migração no seu banco. Esse pacote não adiciona login Google nem a edição genérica para clientes; esses itens continuam como próximas etapas, depois desta atualização validada na sua conta.
 

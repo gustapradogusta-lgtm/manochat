@@ -4,7 +4,7 @@ Base: ManoChat-Atualizacao-GitHub.zip, entregue em 10/10/2026.
 
 ## Resultado
 
-- 33/33 testes Node passaram (`npm test`, Node 24).
+- 37/37 testes Node passaram (`npm test`, Node 24).
 - Checagem de sintaxe de todos os JS de src/, public/ e tests/ passou.
 - Navegador: editor desktop, modo clean e dark, configuração de botões, prévia ao editar mensagem, opções por teclado (setas + Enter), alteração da forma de entrega e salvamento pela API local.
 - Viewport mobile 390 × 844 em iframe de QA: escolhas visíveis, editor em tela cheia, cabeçalho e rodapé sem deslocamento, documento e diálogo com largura de 390 pixels, sem transbordamento horizontal.
@@ -25,3 +25,5 @@ Limite de botões e rótulos; ações permitidas por etapa; URLs inválidas; per
 ## Limites
 
 Meta simulada nos testes: a aceitação de templates, permissões e recebimento de postbacks na conta real exigem a validação descrita no guia. O teste mobile cobre layout em viewport; teclado virtual, áreas seguras e comportamento específico do Safari/iOS e aparelhos Android físicos ainda precisam ser conferidos no aparelho. Não houve publicação ou alteração de dados reais.
+
+Revisão das mensagens: quatro testes adicionais cobrem o CTA RECEBER CONTEÚDO, condições de ativação, fallback de texto e destinos de arquivo/link. Os módulos de envio, webhook, segurança e banco não foram modificados nesta revisão.
