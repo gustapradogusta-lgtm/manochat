@@ -78,7 +78,9 @@ export function parseInstagramEvents(body) {
     }
     for (const item of entry.messaging || []) {
       if (item.message?.is_echo) continue;
-      if (item.message) {
+      if (item.postback) {
+        output.push({ type: 'postback', entryId: entry.id, senderId: item.sender?.id, recipientId: item.recipient?.id, timestamp: item.timestamp, postback: item.postback });
+      } else if (item.message) {
         output.push({
           type: 'message',
           entryId: entry.id,

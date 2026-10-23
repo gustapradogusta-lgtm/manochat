@@ -1,3 +1,5 @@
+import {installChoices,refreshChoices,closeChoices} from './ui.js';
+import {buttonConfig,loadButtonEditor,initButtonEditor,setButtonCapabilities,selectPreview} from './button-editor.js';
 import { duplicateCampaign, parseTags, validateDelivery } from './campaign-tools.js';
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -29,7 +31,7 @@ function navigate(view) {
   $$('.view').forEach((el) => el.classList.toggle('active', el.id === `${view}View`));
   $$('.nav-item').forEach((el) => el.classList.toggle('active', el.dataset.view === view));
   $('#breadcrumb').textContent = ({ overview: 'VISÃO GERAL', campaigns: 'CAMPANHAS', simulator: 'SIMULADOR', connection: 'CONEXÃO META', events: 'EVENTOS', contacts:'CONTATOS' })[view];
-  $('.sidebar').classList.remove('open');
+  setMenu(false);
   location.hash = view;
   if (view === 'events') loadEvents();
   if (view === 'contacts') renderContacts();
@@ -91,7 +93,7 @@ async function loadAll() {
     const [overview, campaigns] = await Promise.all([api('/api/overview'), api('/api/campaigns')]);
     state.overview = overview; state.campaigns = campaigns.campaigns;
     renderOverview(); renderCampaigns();syncEventFilterOptions();
-    api('/api/capabilities').then(result=>{capabilitiesState=result;if($('#campaignDialog').open)syncDeliveryFields();}).catch(()=>{});
+    api('/api/capabilities').then(result=>{capabilitiesState=result;if($('#campaignDialog').open){syncDeliveryFields();setButtonCapabilities(result);}}).catch(()=>{});
     $('#webhookUrl').textContent = `${location.origin}/webhooks/instagram`;
   } catch (error) { toast(error.message); }
 }
@@ -119,6 +121,8 @@ function openCampaign(campaign = null) {
   $('#deleteCampaign').classList.toggle('hidden', !campaign?.id);
   $('#mediaPicker').classList.add('hidden');
   $('#mediaGrid').innerHTML = '';
+  loadButtonEditor(campaign?.buttons,capabilitiesState);
+  showEditorTab('trigger');refreshChoices();
   $('#campaignDialog').showModal();
 }
 
@@ -203,7 +207,9 @@ $('#loginForm').addEventListener('submit', async (event) => {
 $('#showPassword').addEventListener('click', () => { $('#password').type = $('#password').type === 'password' ? 'text' : 'password'; });
 $('#logout').addEventListener('click', async () => { await api('/api/logout', { method: 'POST' }); showLogin(); });
 $$('.nav-item').forEach((button) => button.addEventListener('click', () => navigate(button.dataset.view)));
-$('#menuToggle').addEventListener('click', () => $('.sidebar').classList.toggle('open'));
+$('#menuToggle').addEventListener('click', () => setMenu(!$('.sidebar').classList.contains('open')));
+$('#navBackdrop').addEventListener('click',()=>setMenu(false));
+document.addEventListener('keydown',e=>{if(e.key==='Escape')setMenu(false);});
 $$('[data-refresh]').forEach((button) => button.addEventListener('click', loadAll));
 $('#newCampaign').addEventListener('click', () => openCampaign());
 $('#newCampaignTop').addEventListener('click', () => openCampaign());
@@ -234,6 +240,7 @@ $('#campaignForm').addEventListener('submit', async (event) => {
   const id = $('#campaignId').value;
   const body = {
     name: $('#campaignName').value, keyword: $('#campaignKeyword').value, media_id: $('#campaignMedia').value,
+    buttons:buttonConfig(),
     match_all_comments: $('#campaignMatchAll').checked,
     public_reply: $('#campaignPublicReply').value,
     first_message: $('#campaignFirst').value, follow_message: $('#campaignFollow').value,
@@ -307,3 +314,11 @@ $('#eventsNext').addEventListener('click',()=>{eventPage++;loadEvents()});
 
 api('/api/session').then(({ authenticated }) => authenticated ? showApp() : showLogin()).catch(showLogin);
 navigate(location.hash.slice(1) || 'overview');
+
+function setMenu(open){const wasOpen=$('.sidebar').classList.contains('open');$('.sidebar').inert=!open&&matchMedia('(max-width:720px)').matches;$('.sidebar').classList.toggle('open',open);$('#navBackdrop').classList.toggle('hidden',!open);$('#menuToggle').setAttribute('aria-expanded',String(open));document.body.classList.toggle('menu-is-open',open);$('#menuToggle').setAttribute('aria-label',open?'Fechar menu':'Abrir menu');if(open)$('.sidebar .nav-item.active')?.focus();else if(wasOpen)$('#menuToggle').focus();}
+window.addEventListener('resize',()=>setMenu(false));
+function showEditorTab(tab){closeChoices();$$('[data-editor-tab]').forEach(b=>{const active=b.dataset.editorTab===tab;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});$$('[data-editor-panel]').forEach(p=>p.classList.toggle('hidden',p.dataset.editorPanel!==tab));if(tab!=='trigger')selectPreview(tab==='delivery'?'delivery':'first');$('.editor-layout').scrollTop=0;}
+$$('[data-editor-tab]').forEach(b=>b.addEventListener('click',()=>showEditorTab(b.dataset.editorTab)));
+$$('[data-editor-next]').forEach(b=>b.addEventListener('click',()=>{showEditorTab(b.dataset.editorNext);$(`[data-editor-tab="${b.dataset.editorNext}"]`).focus();}));
+$('#campaignForm').addEventListener('invalid',e=>{const panel=e.target.closest('[data-editor-panel]');if(panel)showEditorTab(panel.dataset.editorPanel);},true);
+installChoices();initButtonEditor();

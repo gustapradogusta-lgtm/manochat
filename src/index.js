@@ -1,3 +1,4 @@
+import { buttonsReady, normalizeButtons, readButtons, buttonsStatement, parseButtonPayload, sourceFingerprint, campaignMessage } from './lib/buttons.js';
 import { capabilities, contacts, decorateCampaigns, downloadFile, events, optionsStatement, prepareDelivery, saveLabels, uploadFile } from './lib/dashboard.js';
 import { canContinueCommentConversation, eventIdFor, isInstagramCommentReply, isInstagramStoryMessage, isOwnInstagramComment, matchesCommentCampaign, nextStep, parseInstagramEvents } from './lib/automation.js';
 import { createSession, validSession, verifyMetaSignature } from './lib/security.js';
@@ -151,6 +152,18 @@ async function saveCampaign(request, env, id) {
   const body=await request.json().catch(()=>({}));
   const delivery=await prepareDelivery(request,env,body);
   if(delivery.error)return json({error:delivery.error},delivery.status);
+  let buttonConfig;
+  if (Object.hasOwn(body,'buttons')) {
+    try { buttonConfig=normalizeButtons(body.buttons); } catch(error) { return json({error:error.message},422); }
+    const hasButtons=Object.values(buttonConfig).some(items=>items.length);
+    if (hasButtons && !await buttonsReady(env)) return json({error:'Aplique a migração 0005 para ativar os botões.'},503);
+    for (const stage of ['first','follow','delivery']) {
+      const text=stage==='first'?body.first_message:stage==='follow'?body.follow_message:`${body.delivery_message}\n${delivery.url}`;
+      if(buttonConfig[stage].length && (!String(text||'').trim() || [...String(text)].length>640)) return json({error:'Mensagens com botões precisam de texto e devem ter até 640 caracteres, incluindo links.'},422);
+    }
+    if(buttonConfig.delivery.some(b=>b.action==='delivery_file')&&!delivery.file) return json({error:'Selecione um arquivo para o botão de download.'},422);
+    if(buttonConfig.delivery.some(b=>b.action==='delivery_link')&&delivery.mode==='file') return json({error:'Escolha entrega por link ou link + arquivo para usar esse botão.'},422);
+  }
   const campaign = cleanCampaign({...body,delivery_url:delivery.url});
   const validation = validateCampaign({...campaign,deliveryUrl:delivery.file?.url||delivery.link});
   if (validation) return json({ error: validation }, 422);
@@ -170,8 +183,10 @@ async function saveCampaign(request, env, id) {
         .bind(campaign.name, campaign.keyword, campaign.mediaId, campaign.publicReply, campaign.firstMessage, campaign.followMessage,
           campaign.deliveryMessage, campaign.deliveryUrl, campaign.matchAllComments, campaign.followRequired, campaign.status);
     }
-    if(delivery.ready)await env.DB.batch([statement,optionsStatement(env,delivery,campaign,id)]);
-    else await statement.run();
+    const statements=[statement];
+    if(delivery.ready)statements.push(optionsStatement(env,delivery,campaign,id));
+    if(buttonConfig && await buttonsReady(env))statements.push(buttonsStatement(env,buttonConfig,campaign,id));
+    await env.DB.batch(statements);
     return json({ ok: true });
   } catch (error) {
     return json({ error: String(error.message).includes('UNIQUE') ? 'Já existe uma campanha com essa palavra-chave para essa publicação.' : 'Não foi possível salvar a campanha.' }, 409);
@@ -246,7 +261,7 @@ async function handleComment(env, event) {
     return;
   }
   try {
-    const sent = await sendPrivateReply(env, commentId, campaign.first_message, igUserId);
+    const sent = await sendPrivateReply(env, commentId, await campaignMessage(env, {...campaign,source_comment_id:commentId}, 'first', campaign.first_message), igUserId);
     const recipientId = sent.recipient_id || igsid;
     if (recipientId) {
       await env.DB.prepare(`INSERT INTO contacts(igsid, username) VALUES (?, ?)
@@ -279,9 +294,22 @@ async function handleComment(env, event) {
 }
 
 async function handleMessage(env, event) {
-  const mid = event.message?.mid;
+  if (!event.senderId) return;
+  // Serialize competing replies/clicks per contact. Older databases retain the original flow.
+  if (!await buttonsReady(env)) return processMessage(env,event);
+  const owner=crypto.randomUUID(), now=Date.now();
+  const lock=await env.DB.prepare(`INSERT INTO conversation_locks(igsid,owner,expires_at) VALUES(?,?,?)
+    ON CONFLICT(igsid) DO UPDATE SET owner=excluded.owner,expires_at=excluded.expires_at
+    WHERE conversation_locks.expires_at<? RETURNING owner`).bind(event.senderId,owner,now+300000,now).first();
+  if(lock?.owner!==owner) return;
+  try { return await processMessage(env,event); }
+  finally { await env.DB.prepare('DELETE FROM conversation_locks WHERE igsid=? AND owner=?').bind(event.senderId,owner).run(); }
+}
+
+async function processMessage(env, event) {
+  const mid = event.message?.mid || event.postback?.mid;
   const igsid = event.senderId;
-  const text = event.message?.text || '';
+  const text = event.postback ? 'continuar' : event.message?.text || '';
   const igUserId = env.META_IG_USER_ID || event.recipientId || event.entryId;
   if (!igsid || !text) return;
   if (isInstagramStoryMessage(event)) {
@@ -297,7 +325,17 @@ async function handleMessage(env, event) {
     console.info('manochat.message_ignored', { reason: 'no_comment_conversation' });
     return;
   }
-  if (!(await claimEvent(env, eventIdFor('message', { mid, timestamp: event.timestamp }), 'message'))) return;
+  if (event.postback) {
+    const payload=parseButtonPayload(event.postback.payload);
+    if (!payload || conversation.status!=='active' || payload.campaignId!==conversation.campaign_id || payload.stage!==(conversation.stage==='awaiting_reply'?'first':'follow')) return;
+    if(payload.source!==await sourceFingerprint(conversation.source_comment_id)) return;
+    const config=await readButtons(env,conversation.campaign_id);
+    if(!config[payload.stage].some(b=>b.id===payload.id && b.action==='continue')) return;
+    // Missing event identity cannot safely be deduplicated; do not advance the flow.
+    if (!mid && !event.timestamp) return;
+  }
+  const eventKey=event.postback ? `postback:${igsid}:${mid || `${event.timestamp}:${event.postback.payload}`}` : eventIdFor('message', { mid, timestamp: event.timestamp });
+  if (!(await claimEvent(env, eventKey, event.postback?'postback':'message'))) return;
 
   let profile = {};
   try { profile = await getProfile(env, igsid); } catch (error) {
@@ -312,7 +350,7 @@ async function handleMessage(env, event) {
     : conversation.follow_message;
   try {
     if (!igUserId) throw new Error('Instagram professional account ID is missing');
-    const sent = await sendMessage(env, igsid, outbound, igUserId);
+    const sent = await sendMessage(env, igsid, await campaignMessage(env, conversation, decision.action==='deliver'?'delivery':'follow', outbound), igUserId);
     await env.DB.prepare(`INSERT INTO contacts(igsid, username, follows_business) VALUES (?, ?, ?)
       ON CONFLICT(igsid) DO UPDATE SET username=COALESCE(excluded.username, username),
       follows_business=excluded.follows_business, last_seen_at=CURRENT_TIMESTAMP`)

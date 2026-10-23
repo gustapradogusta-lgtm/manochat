@@ -1,7 +1,8 @@
+import { buttonsReady, readButtons, privateButtonsEnabled } from './buttons.js';
 const json=(data,status=200)=>Response.json(data,{status});
 export function parseLabels(value=[]) {const list=Array.isArray(value)?value:String(value).split(',');return [...new Set(list.map(v=>String(v).trim().slice(0,40)).filter(Boolean))].slice(0,15);}
 export async function featuresReady(env){const row=await env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='campaign_options'").first();return Boolean(row);}
-export async function capabilities(env){const ready=await featuresReady(env);return json({databaseReady:ready,filesReady:ready&&Boolean(env.FILES),fileLimit:25*1024*1024});}
+export async function capabilities(env){const ready=await featuresReady(env);return json({databaseReady:ready,buttonsReady:await buttonsReady(env),privateReplyButtonsEnabled:privateButtonsEnabled(env),filesReady:ready&&Boolean(env.FILES),fileLimit:25*1024*1024});}
 export async function decorateCampaigns(env,campaigns){
  const stats=await env.DB.prepare(`SELECT campaign_id,
  COUNT(DISTINCT CASE WHEN event_type='private_reply' AND status='sent' THEN igsid END) entered,
@@ -12,7 +13,7 @@ export async function decorateCampaigns(env,campaigns){
  const byId=new Map((stats.results||[]).map(s=>[s.campaign_id,s]));
  const ready=await featuresReady(env);
  const options=ready?await env.DB.prepare('SELECT * FROM campaign_options').all():{results:[]};const byOptions=new Map(options.results.map(o=>[o.campaign_id,o]));
- return campaigns.map(c=>{const o=byOptions.get(c.id),r=byId.get(c.id);return {...c,delivery_mode:o?.delivery_mode||'link',delivery_link:o?.delivery_link??c.delivery_url,delivery_file:o?.file_json?JSON.parse(o.file_json):null,contact_tags:o?.tags_json?JSON.parse(o.tags_json):[],thumbnail_url:o?.thumbnail_url||null,publication_title:o?.publication_title||null,results:{entered:r?.entered||0,replied:r?.replied||0,delivered:r?.completed||0,failed:r?.failed||0}};});
+ return Promise.all(campaigns.map(async c=>{const o=byOptions.get(c.id),r=byId.get(c.id);return {...c,buttons:await readButtons(env,c.id),delivery_mode:o?.delivery_mode||'link',delivery_link:o?.delivery_link??c.delivery_url,delivery_file:o?.file_json?JSON.parse(o.file_json):null,contact_tags:o?.tags_json?JSON.parse(o.tags_json):[],thumbnail_url:o?.thumbnail_url||null,publication_title:o?.publication_title||null,results:{entered:r?.entered||0,replied:r?.replied||0,delivered:r?.completed||0,failed:r?.failed||0}};}));
 }
 export async function prepareDelivery(request,env,body){
  const mode=body.delivery_mode||'link',tags=parseLabels(body.contact_tags||[]),ready=await featuresReady(env);

@@ -24,7 +24,7 @@ async function callMeta(env, path, options = {}) {
 export function sendPrivateReply(env, commentId, text, igUserId = env.META_IG_USER_ID) {
   return callMeta(env, `${igUserId}/messages`, {
     method: 'POST',
-    body: JSON.stringify({ recipient: { comment_id: commentId }, message: { text } })
+    body: JSON.stringify({ recipient: { comment_id: commentId }, message: typeof text === 'string' ? { text } : text })
   });
 }
 
@@ -38,7 +38,7 @@ export function sendCommentReply(env, commentId, text) {
 export function sendMessage(env, igsid, text, igUserId = env.META_IG_USER_ID) {
   return callMeta(env, `${igUserId}/messages`, {
     method: 'POST',
-    body: JSON.stringify({ recipient: { id: igsid }, message: { text } })
+    body: JSON.stringify({ recipient: { id: igsid }, message: typeof text === 'string' ? { text } : text })
   });
 }
 

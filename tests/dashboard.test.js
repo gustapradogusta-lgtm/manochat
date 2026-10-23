@@ -16,7 +16,7 @@ async function call(env,path,body,method='GET') {const token=await createSession
 function envFor(db){return {DB:db,SESSION_SECRET:'session-for-test',META_APP_SECRET:'app-for-test',META_ACCESS_TOKEN:'fake-token-for-test',META_IG_USER_ID:'business',META_VERIFY_TOKEN:'verify-for-test'};}
 async function sendWebhook(env,body){const raw=JSON.stringify(body),promises=[];const signature=await hmac(raw,env.META_APP_SECRET);const response=await worker.fetch(new Request('https://manochat.test/webhooks/instagram',{method:'POST',headers:{'x-hub-signature-256':`sha256=${signature}`},body:raw}),env,{waitUntil:p=>promises.push(p)});await Promise.all(promises);return response;}
 
- test('arquivos Meta, segurança, automação, configuração e fluxo do webhook preservados',()=>{
+ test('integridade dos arquivos revisados e do fluxo de webhook desta atualização',()=>{
  const baseline=JSON.parse(fs.readFileSync(new URL('../VERIFY_META_BASELINE.json',import.meta.url)));
  const sha=s=>crypto.createHash('sha256').update(s).digest('hex');
  for(const [file,hash] of Object.entries(baseline.files))assert.equal(sha(fs.readFileSync(new URL('../'+file,import.meta.url))),hash,file);
