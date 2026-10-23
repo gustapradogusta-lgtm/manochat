@@ -14,26 +14,27 @@
   <link rel="stylesheet" href="/premium.css" />
   <script>try{document.documentElement.dataset.theme=localStorage.getItem("manochat-theme")==="dark"?"dark":"light"}catch{}</script>
   <link rel="stylesheet" href="/studio.css">
+  <link rel="stylesheet" href="/workspace.css">
 </head>
 <body>
   <div id="login" class="login-shell hidden">
     <section class="login-story">
       <a class="brand brand-light" href="#" aria-label="ManoChat">
-        <span class="brand-mark">↗</span><span>ManoChat</span>
+        <img class="brand-logo" src="/manochat-logo.png" alt="ManoChat">
       </a>
       <div>
         <span class="eyebrow light">AUTOMAÇÃO QUE CONVERTE</span>
         <h1>Do comentário<br>para a conversa.</h1>
         <p>Transforme comentários em conversas. Suas campanhas, seu conteúdo, sua operação.</p>
       </div>
-      <div class="login-proof"><span class="pulse"></span> Infraestrutura pronta para Cloudflare</div>
+      <div class="login-proof"><span class="pulse"></span> Comentários e Stories. Uma entrega por vez.</div>
     </section>
     <section class="login-form-wrap">
       <form id="loginForm" class="login-form">
         <div class="mobile-brand"><img class="brand-logo" src="/manochat-logo.png" alt="ManoChat"></div>
         <span class="eyebrow">ACESSO PROTEGIDO</span>
         <h2>Bem-vindo de volta.</h2>
-        <p>Entre com a senha de administrador configurada no deploy.</p>
+        <p>Entre para gerenciar suas campanhas e entregas.</p>
         <label>Senha
           <span class="input-wrap"><input id="password" type="password" autocomplete="current-password" placeholder="Sua senha" required><button type="button" id="showPassword" aria-label="Mostrar senha">◉</button></span>
         </label>
@@ -45,8 +46,9 @@
 
   <div id="app" class="app-shell hidden">
     <aside id="appSidebar" class="sidebar">
+      <button id="closeSidebar" class="drawer-close icon-button" type="button" aria-label="Fechar menu lateral"></button>
       <a class="brand brand-image-link" href="#overview" aria-label="ManoChat"><img class="brand-logo" src="/manochat-logo.png" alt="ManoChat"></a>
-      <nav aria-label="Navegação principal">
+      <div class="nav-section-label">Área de trabalho</div><nav aria-label="Navegação principal">
         <button class="nav-item active" data-view="overview"><span>⌂</span> Visão geral</button>
         <button class="nav-item" data-view="campaigns"><span>✦</span> Campanhas</button>
         <button class="nav-item" data-view="contacts"><span>◎</span> Contatos</button>
@@ -55,7 +57,7 @@
         <button class="nav-item" data-view="connection"><span>⌁</span> Conexão Meta</button>
       </nav>
       <div class="sidebar-bottom">
-        <div class="cost-badge"><span>R$</span><div><strong>Sua infraestrutura</strong><small>Cloudflare</small></div></div>
+        <div class="cost-badge"><span data-ui-icon="campaign"></span><div><strong>Seu espaço de trabalho</strong><small>Automação do Instagram</small></div></div>
         <button id="logout" class="logout">Sair do painel <span>↗</span></button>
       </div>
     </aside>
@@ -69,7 +71,7 @@
 
       <div class="content">
         <section id="overviewView" class="view active">
-          <div class="page-heading"><div><span class="eyebrow">OPERAÇÃO EM TEMPO REAL</span><h1>Bom dia, Gustavo.</h1><p>Veja como seus comentários estão virando conversas e entregas.</p></div><button class="secondary" data-refresh>↻ Atualizar dados</button></div>
+          <div class="page-heading"><div><span class="eyebrow">OPERAÇÃO EM TEMPO REAL</span><h1>Visão geral</h1><p>Acompanhe suas campanhas, conversas e entregas.</p><span id="workspaceDate" class="workspace-date"></span></div><button class="secondary" data-refresh>↻ Atualizar dados</button></div>
           <div class="metrics">
             <article class="metric hero-metric"><span class="metric-icon">✦</span><small>Campanhas ativas</small><strong id="metricCampaigns">—</strong><p>Automações trabalhando agora</p></article>
             <article class="metric"><span class="metric-icon blue">◎</span><small>Contatos alcançados</small><strong id="metricContacts">—</strong><p>Perfis únicos registrados</p></article>
@@ -77,7 +79,7 @@
           </div>
           <div class="overview-grid">
             <article class="panel activity-panel"><div class="panel-head"><div><span class="eyebrow">ÚLTIMOS EVENTOS</span><h2>Atividade recente</h2></div><span class="live"><i></i> HISTÓRICO</span></div><div id="activityList" class="activity-list" tabindex="0" role="region" aria-label="Últimos eventos"><div class="empty"><span>↗</span><strong>Nenhuma interação ainda</strong><p>Os eventos aparecerão aqui quando a automação começar.</p></div></div><div class="activity-footer"><span>Até 15 eventos recentes</span><button id="viewAllEvents" class="secondary compact" type="button">Ver todos →</button></div></article>
-            <article class="panel flow-panel"><span class="eyebrow">COMO FUNCIONA</span><h2>Seu fluxo ativo</h2><div class="flow"><div><b>1</b><span><strong>Comentário</strong><small>Detecta a palavra-chave</small></span></div><i></i><div><b>2</b><span><strong>Mensagem privada</strong><small>Convida para responder</small></span></div><i></i><div><b>3</b><span><strong>Verificação</strong><small>Confere se segue o perfil</small></span></div><i></i><div><b>4</b><span><strong>Entrega</strong><small>Libera o conteúdo</small></span></div></div></article>
+            <article class="panel flow-panel"><span class="eyebrow">COMO FUNCIONA</span><h2>Da interação à entrega</h2><div class="flow"><div><b>1</b><span><strong>Comentário ou Story</strong><small>Uma nova entrada inicia o fluxo</small></span></div><i></i><div><b>2</b><span><strong>Mensagem privada</strong><small>Convida para responder</small></span></div><i></i><div><b>3</b><span><strong>Verificação de follow</strong><small>Quando exigida pela campanha</small></span></div><i></i><div><b>4</b><span><strong>Entrega e encerramento</strong><small>Libera o conteúdo e encerra o fluxo</small></span></div></div></article>
           </div>
         </section>
 
@@ -103,11 +105,16 @@
 
         <section id="campaignsView" class="view">
           <div class="page-heading"><div><span class="eyebrow">AUTOMAÇÕES</span><h1>Campanhas</h1><p>Suas publicações, automações e resultados em um só lugar.</p></div><button id="newCampaign" class="primary">+ Criar campanha</button></div>
-          <div id="campaignList" class="campaign-list"></div>
+          <div class="campaign-workspace-tools">
+            <div class="campaign-totals" aria-label="Resumo das campanhas"><span><strong id="campaignTotal">0</strong> campanhas</span><span><i class="summary-dot active"></i><strong id="campaignActiveTotal">0</strong> ativas</span><span><i class="summary-dot paused"></i><strong id="campaignPausedTotal">0</strong> pausadas</span></div>
+            <div class="campaign-find"><label class="search-control"><span class="sr-only">Buscar campanha</span><span data-ui-icon="search"></span><input id="campaignSearch" type="search" placeholder="Buscar nome, publicação ou palavra-chave"></label><label class="campaign-status-filter"><span class="sr-only">Status das campanhas</span><select id="campaignStatusFilter" aria-label="Status das campanhas"><option value="">Todos os status</option><option value="active">Ativas</option><option value="paused">Pausadas</option></select></label></div>
+          </div>
+          <div id="campaignFilterCount" class="campaign-filter-count" role="status" aria-live="polite"></div>
+          <div id="campaignList" class="campaign-list"></div><div id="campaignFilterEmpty" class="filter-empty hidden"><span data-ui-icon="search"></span><h2>Nenhuma campanha encontrada</h2><p>Tente outro nome, palavra-chave ou status.</p><button id="clearCampaignSearch" class="secondary" type="button">Limpar busca e filtro</button></div>
         </section>
 
         <section id="simulatorView" class="view">
-          <div class="page-heading"><div><span class="eyebrow">TESTE SEM PUBLICAR</span><h1>Simulador do fluxo</h1><p>Confira cada resposta antes de conectar seu Instagram.</p></div></div>
+          <div class="page-heading"><div><span class="eyebrow">TESTE SEM PUBLICAR</span><h1>Simulador do fluxo</h1><p>Confira as mensagens com dados simulados, sem enviar ao Instagram.</p></div></div>
           <div class="simulator-grid">
             <form id="simulatorForm" class="panel form-panel">
               <label>Campanha<select id="simCampaign"></select></label>
@@ -158,7 +165,7 @@
       <section data-editor-panel="delivery" class="editor-panel hidden"><div class="editor-intro"><span class="eyebrow">CUMPRA A PROMESSA</span><h3>Conteúdo na mão.</h3><p>Entregue seu link ou arquivo e organize os contatos.</p></div>      <label>Mensagem de entrega<textarea id="campaignDelivery" required rows="2" placeholder="Aqui está o conteúdo prometido:"></textarea></label>
       <div class="delivery-section"><div class="delivery-heading"><span class="eyebrow">CONTEÚDO DA ENTREGA</span><h3>O que a pessoa vai receber?</h3><p>O comentário inicia a conversa. A entrega acontece na DM.</p></div><label>Forma de entrega<select id="deliveryMode"><option value="link">Link</option><option value="file">Arquivo</option><option value="both">Link + arquivo</option></select></label><label id="deliveryUrlField">Link de entrega<input id="campaignUrl" required type="url" placeholder="https://..."></label><div id="deliveryFileField" class="hidden"><label class="file-drop" for="deliveryFile"><span>↑</span><strong>Selecionar arquivo</strong><small>PDF, DOCX, planilhas, ZIP e outros · até 25 MB</small></label><input id="deliveryFile" type="file" class="file-native"><div id="fileSelection" class="file-selection hidden"><div><strong id="fileName"></strong><small id="fileSize"></small></div><button id="removeDeliveryFile" class="secondary compact" type="button">Remover</button></div><p class="local-file-note">O arquivo será hospedado no seu armazenamento FILES e entregue por um link de download na DM. Quem tiver o link poderá baixá-lo.</p></div></div><label>Etiquetas ao concluir a entrega<input id="campaignTags" placeholder="Ex.: recebeu guia, interessado"><small>Separe por vírgulas. São aplicadas quando a entrega real é registrada.</small></label>
 <section class="message-buttons"><div class="message-buttons-head"><div><strong>Botões da entrega</strong><span id="button-count-delivery" class="count-pill">0/3</span></div><button class="add-message-button secondary compact" type="button" data-stage="delivery">＋ Adicionar botão</button></div><div id="buttons-delivery" class="button-items"></div><p class="button-config-note" data-stage="delivery"></p></section></section>
-      </div><aside class="editor-preview"><div class="preview-heading"><span class="eyebrow">PRÉVIA DA CONVERSA</span><span class="preview-live"><i></i> Ao vivo</span></div><div class="preview-stage-tabs"><button type="button" data-preview-stage="first" class="active">Início</button><button type="button" data-preview-stage="follow">Follow</button><button type="button" data-preview-stage="delivery">Entrega</button></div><div class="phone-preview"><div class="phone-status"><span>9:41</span><span>●●● ▰</span></div><div class="dm-preview-header"><span>‹</span><div class="preview-avatar">M</div><div><strong>Seu Instagram</strong><small>Conta profissional</small></div><span>⋯</span></div><div class="dm-preview-content"><span class="dm-preview-time">AGORA</span><div class="dm-preview-context">Você comentou em uma publicação</div><div class="dm-preview-bubble"><p id="dmPreviewMessage"></p><span id="dmPreviewLink"></span><div id="dmPreviewButtons"></div></div><p id="previewStageLabel" class="preview-stage-label"></p></div><div class="dm-preview-composer">Mensagem… <span>♡ ＋</span></div></div><strong id="previewCampaignName" class="preview-campaign-name">Nova campanha</strong><p class="preview-disclaimer">Prévia ilustrativa. A aparência final depende do Instagram. Links não confirmam follow; continuar a conversa consulta a Meta.</p></aside></div>
+      </div><aside class="editor-preview"><div class="preview-heading"><span class="eyebrow">Prévia da conversa</span><span class="preview-live">Rascunho</span></div><div class="preview-stage-tabs"><button type="button" data-preview-stage="first" class="active">Início</button><button type="button" data-preview-stage="follow">Follow</button><button type="button" data-preview-stage="delivery">Entrega</button></div><div class="phone-preview"><div class="phone-status"><span>9:41</span><span>●●● ▰</span></div><div class="dm-preview-header"><span>‹</span><div class="preview-avatar">M</div><div><strong>Seu Instagram</strong><small>Conta profissional</small></div><span>⋯</span></div><div class="dm-preview-content"><span class="dm-preview-time">AGORA</span><div class="dm-preview-context">Você comentou em uma publicação</div><div class="dm-preview-bubble"><p id="dmPreviewMessage"></p><span id="dmPreviewLink"></span><div id="dmPreviewButtons"></div></div><p id="previewStageLabel" class="preview-stage-label"></p></div><div class="dm-preview-composer">Mensagem… <span>♡ ＋</span></div></div><strong id="previewCampaignName" class="preview-campaign-name">Nova campanha</strong><p class="preview-disclaimer">Prévia ilustrativa. A aparência final depende do Instagram. Links não confirmam follow; continuar a conversa consulta a Meta.</p></aside></div>
       <footer class="editor-footer"><p id="campaignError" class="form-error" role="alert"></p><div class="dialog-actions"><button id="deleteCampaign" class="danger-button hidden" type="button">Excluir</button><span class="dialog-actions-main"><button id="cancelCampaign" class="secondary" type="button">Cancelar</button><button id="saveCampaign" class="primary" type="submit">Salvar campanha ↗</button></span></div></footer>
     </form>
   </dialog>
@@ -166,5 +173,6 @@
   <dialog id="contactDialog" aria-labelledby="contactTitle"><form id="contactTagForm" class="results-content"><div class="dialog-head"><div><span class="eyebrow">ETIQUETAS DO CONTATO</span><h2 id="contactTitle"></h2></div><button id="closeContact" class="icon-button" type="button" aria-label="Fechar contato">×</button></div><input id="contactId" type="hidden"><label class="tag-editor">Etiquetas<input id="contactTags" placeholder="recebeu guia, interessado" maxlength="600"><small>Separe por vírgulas. Apague uma etiqueta para removê-la.</small></label><div class="dialog-actions"><button class="primary" type="submit">Salvar etiquetas</button></div></form></dialog><div id="toast" role="status"></div>
   <button id="navBackdrop" class="nav-backdrop hidden" aria-label="Fechar menu"></button>
   <script type="module" src="/app.js"></script>
+  <script type="module" src="/interface-polish.js"></script>
 </body>
 </html>
